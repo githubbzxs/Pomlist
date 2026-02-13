@@ -13,9 +13,9 @@
 - **[2026-02-13] 时间机制**：采用软计时，只做记录与复盘，不参与结束判定。
   - Why：保持产品差异化核心，同时保留效率分析价值。
   - Impact：专注页展示已用时，统计页使用时长聚合。
-- **[2026-02-13] 数据同步策略**：SwiftData + CloudKit 自动同步。
-  - Why：保持原生体验，避免自建后端复杂度。
-  - Impact：模型配置必须启用 CloudKit，冲突以时间戳与结束态优先。
+- **[2026-02-13] 数据同步策略调整**：首版先切换为仅本地存储，暂不启用 CloudKit。
+  - Why：降低真机自签调试门槛，避免账号能力限制导致安装失败。
+  - Impact：`PomlistApp` 使用 `ModelConfiguration()`；文档同步更新。
 
 ## Commands
 
@@ -25,7 +25,7 @@
 ## Status / Next
 
 - **[2026-02-13] 当前状态**：首版功能已落地（To-Do、任务钟、手动收钟、复盘统计、测试骨架）。
-- **[2026-02-13] 下一步**：在 macOS 环境执行 `xcodegen` 与 `xcodebuild test`，完成真机/模拟器回归并补齐 AppIcon 图像资源。
+- **[2026-02-13] 下一步**：在 macOS 环境执行 `xcodegen` 与 `xcodebuild test`，并验证 GitHub Actions 未签名 IPA 工件产出。
 
 ## Known Issues
 

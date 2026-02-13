@@ -11,7 +11,8 @@ struct PomlistApp: App {
             FocusSession.self,
             SessionTaskRef.self
         ])
-        let configuration = ModelConfiguration(cloudKitDatabase: .automatic)
+        // 首版默认仅使用本地存储，避免真机自签阶段受 CloudKit 能力限制。
+        let configuration = ModelConfiguration()
         do {
             return try ModelContainer(for: schema, configurations: configuration)
         } catch {

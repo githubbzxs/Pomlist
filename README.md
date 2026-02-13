@@ -13,13 +13,13 @@ Pomlist 是一个 iOS 学习效率应用，把 To-Do List 与“任务驱动番�
 - 手动收钟：支持未满完成结束，保留完成比与时长。
 - 数据回写：完成任务自动标记完成，未完成任务保留待办。
 - 完整复盘：今日指标、7 天趋势、时长分布、连续专注天数。
-- 本地存储 + iCloud 同步（CloudKit）。
+- 本地存储（首版默认关闭 iCloud/CloudKit）。
 
 ## 技术栈
 
 - SwiftUI
 - SwiftData
-- CloudKit（通过 SwiftData CloudKit 配置）
+- GitHub Actions（可选：产出未签名 IPA 工件）
 - Charts
 - XCTest
 
@@ -44,3 +44,10 @@ Pomlist 是一个 iOS 学习效率应用，把 To-Do List 与“任务驱动番�
 - 不做通知提醒，用户手动开启使用。
 - 统计默认按本地时区自然日聚合。
 
+## GitHub Actions 未签名 IPA
+
+仓库提供工作流：`.github/workflows/unsigned-ipa.yml`
+
+- 触发方式：`workflow_dispatch` 或推送到 `main`。
+- 产物名称：`Pomlist-unsigned-ipa`（文件为 `Pomlist-unsigned.ipa`）。
+- 注意：该 IPA 未签名，不能直接安装到 iPhone，仅用于构建验证或后续再签名处理。
