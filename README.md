@@ -1,53 +1,97 @@
-# Pomlist
+# Pomlist Web
 
-Pomlist 是一个 iOS 学习效率应用，把 To-Do List 与“任务驱动番茄钟”融合到同一套流程中：
+Pomlist 是一个任务驱动番茄钟应用，核心不是倒计时结束，而是按任务完成度结束一次专注会话。
 
-- 一个钟不再由倒计时结束，而是由任务完成进度结束。
-- 例如创建一个包含 10 个任务的钟，完成 8 个后手动结束，记录为 `8/10`。
-- 应用会保留软计时数据，用于复盘，不强制计时结束。
+- 示例：一个任务钟内有 10 个任务，完成 8 个后手动结束，记录为 `8/10`。
+- 同时保留软计时，用于复盘统计，但不强制决定结束时间。
 
-## 核心特性
+## 核心功能
 
-- 统一 To-Do 任务池：新增、编辑、完成、恢复。
-- 任务钟：从 To-Do 勾选任务后开启，专注中逐项完成。
-- 手动收钟：支持未满完成结束，保留完成比与时长。
-- 数据回写：完成任务自动标记完成，未完成任务保留待办。
-- 完整复盘：今日指标、7 天趋势、时长分布、连续专注天数。
-- 本地存储（首版默认关闭 iCloud/CloudKit）。
+- 账号体系：邮箱 + 密码（注册 / 登录 / 退出）
+- To-Do：新增、编辑、完成/恢复、删除、优先级与截止时间
+- 任务钟：从待办多选启动，进行中勾选任务，手动结束并记录完成比
+- 复盘：今日指标、近 7 天趋势、近 30 天时长分布、连续专注天数
+- PWA：支持添加到桌面，离线可打开基础页面
 
 ## 技术栈
 
-- SwiftUI
-- SwiftData
-- GitHub Actions（可选：产出未签名 IPA 工件）
-- Charts
-- XCTest
+- Next.js 16 + TypeScript + App Router
+- Supabase（PostgreSQL + Auth + RLS）
+- Tailwind CSS 4
+- Vitest（单元测试）
 
-## 本地运行
+## 本地开发
 
-1. 安装 Xcode 与 XcodeGen。
-2. 在仓库根目录生成工程：
+1. 安装依赖：
    ```bash
-   xcodegen generate
+   npm install
    ```
-3. 打开 `Pomlist.xcodeproj`，选择 iPhone 模拟器运行。
-4. 执行测试：
+2. 配置环境变量（`.env.local`）：
    ```bash
-   xcodebuild test -scheme Pomlist -destination "platform=iOS Simulator,name=iPhone 15"
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   # 仅在需要服务端管理能力时使用
+   SUPABASE_SERVICE_ROLE_KEY=...
+   ```
+3. 启动开发服务：
+   ```bash
+   npm run dev
    ```
 
-## 产品规则（首版）
+## 数据库迁移
 
-- 仅支持 iPhone 竖屏。
-- 同一时刻只能有一个进行中的任务钟。
-- 任务钟仅支持手动结束并记录。
-- 不做通知提醒，用户手动开启使用。
-- 统计默认按本地时区自然日聚合。
+迁移文件位于：`supabase/migrations/0001_init.sql`
 
-## GitHub Actions 未签名 IPA
+包含：
+- `todos`
+- `focus_sessions`
+- `session_task_refs`
+- 单用户唯一 active session 约束
+- RLS 策略（仅可访问自己的数据）
 
-仓库提供工作流：`.github/workflows/unsigned-ipa.yml`
+## 脚本命令
 
-- 触发方式：`workflow_dispatch` 或推送到 `main`。
-- 产物名称：`Pomlist-unsigned-ipa`（文件为 `Pomlist-unsigned.ipa`）。
-- 注意：该 IPA 未签名，不能直接安装到 iPhone，仅用于构建验证或后续再签名处理。
+- 代码检查：
+  ```bash
+  npm run lint
+  ```
+- 类型检查：
+  ```bash
+  npm run typecheck
+  ```
+- 单元测试：
+  ```bash
+  npm run test
+  ```
+- 生产构建：
+  ```bash
+  npm run build
+  ```
+
+## API 概览
+
+- `POST /api/auth/sign-up`
+- `POST /api/auth/sign-in`
+- `POST /api/auth/sign-out`
+- `GET /api/todos`
+- `POST /api/todos`
+- `PATCH /api/todos/:id`
+- `DELETE /api/todos/:id`
+- `POST /api/sessions/start`
+- `GET /api/sessions/active`
+- `PATCH /api/sessions/:id/toggle-task`
+- `POST /api/sessions/:id/end`
+- `GET /api/analytics/dashboard`
+- `GET /api/analytics/trend?days=7`
+- `GET /api/analytics/distribution?days=30`
+
+统一响应结构：
+- 成功：`{ success: true, data: ... }`
+- 失败：`{ success: false, error: { code, message, details? } }`
+
+## 部署
+
+- 推荐：Vercel + Supabase
+- 目标域名：`pomlist.0xpsyche.me`
+- CI：`.github/workflows/web-ci.yml`（lint + typecheck + test + build）
+

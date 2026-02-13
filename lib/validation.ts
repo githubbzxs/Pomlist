@@ -1,0 +1,71 @@
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
+export function isValidEmail(value: string): boolean {
+  return SIMPLE_EMAIL_REGEX.test(value);
+}
+
+export function normalizeTitle(input: unknown): string | null {
+  if (typeof input !== "string") {
+    return null;
+  }
+  const trimmed = input.trim();
+  if (trimmed.length < 1 || trimmed.length > 200) {
+    return null;
+  }
+  return trimmed;
+}
+
+export function normalizeText(input: unknown, maxLength: number): string | null {
+  if (input === undefined || input === null) {
+    return null;
+  }
+  if (typeof input !== "string") {
+    return null;
+  }
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return trimmed.slice(0, maxLength);
+}
+
+export function normalizePriority(input: unknown): 1 | 2 | 3 | null {
+  if (input === undefined || input === null) {
+    return null;
+  }
+  const parsed = typeof input === "number" ? input : Number(input);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  if (parsed <= 1) {
+    return 1;
+  }
+  if (parsed >= 3) {
+    return 3;
+  }
+  return 2;
+}
+
+export function normalizeDueAt(input: unknown): string | null {
+  if (input === undefined || input === null || input === "") {
+    return null;
+  }
+  if (typeof input !== "string") {
+    return null;
+  }
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+}
+
+export function uniqueIds(input: string[]): string[] {
+  return Array.from(new Set(input.filter((item) => item.trim() !== "")));
+}
+
