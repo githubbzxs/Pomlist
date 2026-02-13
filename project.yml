@@ -1,0 +1,35 @@
+name: Pomlist
+options:
+  minimumXcodeGenVersion: 2.38.0
+settings:
+  base:
+    SWIFT_VERSION: 5.10
+targets:
+  Pomlist:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Pomlist
+    resources:
+      - path: Pomlist/Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.0xpsyche.pomlist
+        PRODUCT_NAME: Pomlist
+        INFOPLIST_FILE: Pomlist/Support/Info.plist
+        TARGETED_DEVICE_FAMILY: 1
+        SUPPORTS_MACCATALYST: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    scheme:
+      testTargets:
+        - PomlistTests
+  PomlistTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: PomlistTests
+    dependencies:
+      - target: Pomlist
