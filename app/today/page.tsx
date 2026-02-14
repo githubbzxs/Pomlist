@@ -937,12 +937,12 @@ export default function TodayPage() {
                     <div className="task-meta-row mt-2">
                       {primaryTag ? (
                         <span className="task-pill" style={tagPillStyle(primaryColor)}>
-                          #{primaryTag}
+                          {primaryTag}
                         </span>
                       ) : (
-                        <span className="task-meta-muted">#{DEFAULT_PRIMARY_TAG}</span>
+                        <span className="task-meta-muted">{DEFAULT_PRIMARY_TAG}</span>
                       )}
-                      {secondaryTag ? <span className="task-pill task-pill-tag">#{secondaryTag}</span> : null}
+                      {secondaryTag ? <span className="task-pill task-pill-tag">{secondaryTag}</span> : null}
                     </div>
                     {content ? <p className="task-content-preview">{content}</p> : null}
                   </button>
@@ -1056,7 +1056,7 @@ export default function TodayPage() {
                       <div className="meta-manager-row-main">
                         <span className="meta-manager-name-wrap">
                           <span className="meta-manager-swatch" style={{ backgroundColor: getTagColor(tag) }} />
-                          <span className="meta-manager-name">#{tag}</span>
+                          <span className="meta-manager-name">{tag}</span>
                         </span>
                         <div className="meta-manager-row-actions">
                           <div className="meta-manager-color-palette is-inline">
@@ -1140,7 +1140,7 @@ export default function TodayPage() {
                       onClick={() => setTaskEditorPrimaryTag(item)}
                       disabled={taskEditorSaving || taskEditorDeleting}
                     >
-                      #{item}
+                      {item}
                     </button>
                   ))}
                 </div>
@@ -1165,7 +1165,7 @@ export default function TodayPage() {
                       onClick={() => setTaskEditorSecondaryTag(item)}
                       disabled={taskEditorSaving || taskEditorDeleting}
                     >
-                      #{item}
+                      {item}
                     </button>
                   ))}
                 </div>

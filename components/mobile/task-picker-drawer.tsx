@@ -174,7 +174,7 @@ export function TaskPickerDrawer({
                       className="tag-suggestion-btn"
                       onClick={() => setPrimaryTag(item)}
                     >
-                      #{item}
+                      {item}
                     </button>
                   ))}
                 </div>
@@ -198,7 +198,7 @@ export function TaskPickerDrawer({
                       className="tag-suggestion-btn"
                       onClick={() => setSecondaryTag(item)}
                     >
-                      #{item}
+                      {item}
                     </button>
                   ))}
                 </div>
@@ -250,12 +250,12 @@ export function TaskPickerDrawer({
                       <span className="task-meta-row">
                         {primary ? (
                           <span className="task-pill" style={primaryTagPillStyle(primaryColor)}>
-                            #{primary}
+                            {primary}
                           </span>
                         ) : (
                           <span className="task-meta-muted">未设置标签</span>
                         )}
-                        {secondary ? <span className="task-pill task-pill-tag">#{secondary}</span> : null}
+                        {secondary ? <span className="task-pill task-pill-tag">{secondary}</span> : null}
                       </span>
                     </span>
                   </button>
