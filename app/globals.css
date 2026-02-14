@@ -840,6 +840,82 @@ button {
   color: var(--text-subtle);
 }
 
+.tag-input-shell {
+  min-height: 2.5rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--line-soft);
+  background: rgba(15, 23, 42, 0.76);
+  padding: 0.3rem 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.tag-input-shell:focus-within {
+  border-color: rgba(125, 211, 252, 0.72);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+.tag-input-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.16);
+  color: #ddd6fe;
+  font-size: 0.68rem;
+  padding: 0.14rem 0.45rem;
+}
+
+.tag-input-chip-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tag-input-chip-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tag-input-draft {
+  flex: 1;
+  min-width: 3.8rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  padding: 0.16rem 0;
+}
+
+.tag-suggestion-row {
+  margin-top: 0.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.tag-suggestion-btn {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.62);
+  color: var(--text-subtle);
+  font-size: 0.68rem;
+  padding: 0.12rem 0.42rem;
+}
+
+.tag-suggestion-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .task-picker-list {
   flex: 1;
   min-height: 0;
@@ -974,6 +1050,10 @@ button {
   gap: 0.5rem;
 }
 
+.meta-manager-create-category {
+  grid-template-columns: 1fr 2.4rem auto;
+}
+
 .meta-manager-list {
   min-height: 0;
   max-height: 46dvh;
@@ -1004,10 +1084,34 @@ button {
   word-break: break-word;
 }
 
+.meta-manager-name-wrap {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.meta-manager-swatch {
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  flex-shrink: 0;
+}
+
 .meta-manager-row-actions {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+}
+
+.meta-manager-color-input {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 0.55rem;
+  background: rgba(15, 23, 42, 0.82);
+  padding: 0.14rem;
 }
 
 .meta-manager-row-editor {

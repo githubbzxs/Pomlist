@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { FeedbackState } from "@/components/feedback-state";
@@ -45,7 +45,9 @@ type DisplayTask = {
 
 const DEFAULT_CATEGORY = "未分类";
 const CATEGORY_REGISTRY_KEY = "pomlist.meta.categories";
+const CATEGORY_COLOR_REGISTRY_KEY = "pomlist.meta.category-colors";
 const TAG_REGISTRY_KEY = "pomlist.meta.tags";
+const DEFAULT_CATEGORY_COLOR = "#38bdf8";
 
 const EMPTY_DASHBOARD: DashboardMetrics = {
   date: "",
@@ -84,11 +86,11 @@ function formatClock(seconds: number): string {
 function formatDuration(seconds: number): string {
   const minute = Math.max(0, Math.floor(seconds / 60));
   if (minute < 60) {
-    return `${minute} 分钟`;
+    return `${minute} 鍒嗛挓`;
   }
   const hour = Math.floor(minute / 60);
   const remain = minute % 60;
-  return `${hour} 小时 ${remain} 分钟`;
+  return `${hour} 灏忔椂 ${remain} 鍒嗛挓`;
 }
 
 function errorToText(error: unknown): string {
@@ -122,13 +124,17 @@ function readContent(todo: TodoItem): string {
   return typeof raw === "string" ? raw : "";
 }
 
-function parseTagsText(input: string): string[] {
-  return mergeUniqueValues(
-    input
-      .split(/[，,\s]+/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0),
-  );
+function parseDraftTags(input: string): { committed: string[]; draft: string } {
+  const split = input.split(/[锛?\s]+/);
+  const endsWithSeparator = /[锛?\s]$/.test(input);
+  const cleaned = split.map((item) => item.trim()).filter((item) => item.length > 0);
+  if (cleaned.length === 0) {
+    return { committed: [], draft: "" };
+  }
+  if (endsWithSeparator) {
+    return { committed: cleaned, draft: "" };
+  }
+  return { committed: cleaned.slice(0, -1), draft: cleaned[cleaned.length - 1] ?? "" };
 }
 
 function progressPercent(completed: number, total: number): number {
@@ -167,6 +173,57 @@ function parseStoredMeta(raw: string | null): string[] {
   }
 }
 
+function normalizeHexColor(input: unknown): string | null {
+  if (typeof input !== "string") {
+    return null;
+  }
+  const value = input.trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(value)) {
+    return null;
+  }
+  return value.toLowerCase();
+}
+
+function parseStoredColorMap(raw: string | null): Record<string, string> {
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      const name = key.trim();
+      const color = normalizeHexColor(value);
+      if (!name || !color) {
+        continue;
+      }
+      result[name] = color;
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const normalized = normalizeHexColor(hex) ?? DEFAULT_CATEGORY_COLOR;
+  const r = Number.parseInt(normalized.slice(1, 3), 16);
+  const g = Number.parseInt(normalized.slice(3, 5), 16);
+  const b = Number.parseInt(normalized.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function categoryPillStyle(color: string) {
+  return {
+    color,
+    borderColor: hexToRgba(color, 0.55),
+    background: hexToRgba(color, 0.2),
+  };
+}
+
 export default function TodayPage() {
   const [panel, setPanel] = useState<CanvasPanel>("center");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -188,6 +245,7 @@ export default function TodayPage() {
   const [draftChecks, setDraftChecks] = useState<Record<string, boolean>>({});
 
   const [categoryRegistry, setCategoryRegistry] = useState<string[]>([]);
+  const [categoryColorMap, setCategoryColorMap] = useState<Record<string, string>>({});
   const [tagRegistry, setTagRegistry] = useState<string[]>([]);
 
   const [metaManagerOpen, setMetaManagerOpen] = useState(false);
@@ -195,6 +253,7 @@ export default function TodayPage() {
   const [metaSaving, setMetaSaving] = useState(false);
   const [metaNotice, setMetaNotice] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState(DEFAULT_CATEGORY_COLOR);
   const [newTagName, setNewTagName] = useState("");
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
@@ -204,7 +263,8 @@ export default function TodayPage() {
   const [taskEditorTodoId, setTaskEditorTodoId] = useState<string | null>(null);
   const [taskEditorTodoTitle, setTaskEditorTodoTitle] = useState("");
   const [taskEditorCategory, setTaskEditorCategory] = useState("");
-  const [taskEditorTagsText, setTaskEditorTagsText] = useState("");
+  const [taskEditorTags, setTaskEditorTags] = useState<string[]>([]);
+  const [taskEditorTagDraft, setTaskEditorTagDraft] = useState("");
   const [taskEditorContent, setTaskEditorContent] = useState("");
   const [taskEditorSaving, setTaskEditorSaving] = useState(false);
   const [taskEditorDeleting, setTaskEditorDeleting] = useState(false);
@@ -234,6 +294,7 @@ export default function TodayPage() {
       return;
     }
     setCategoryRegistry(parseStoredMeta(window.localStorage.getItem(CATEGORY_REGISTRY_KEY)));
+    setCategoryColorMap(parseStoredColorMap(window.localStorage.getItem(CATEGORY_COLOR_REGISTRY_KEY)));
     setTagRegistry(parseStoredMeta(window.localStorage.getItem(TAG_REGISTRY_KEY)));
   }, []);
 
@@ -243,6 +304,13 @@ export default function TodayPage() {
     }
     window.localStorage.setItem(CATEGORY_REGISTRY_KEY, JSON.stringify(categoryRegistry));
   }, [categoryRegistry]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(CATEGORY_COLOR_REGISTRY_KEY, JSON.stringify(categoryColorMap));
+  }, [categoryColorMap]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -328,6 +396,26 @@ export default function TodayPage() {
     }
     return Array.from(values).sort((a, b) => a.localeCompare(b, "zh-CN"));
   }, [todos, tagRegistry]);
+
+  const taskEditorCategoryOptions = useMemo(() => {
+    if (!taskEditorCategory) {
+      return categoryOptions;
+    }
+    if (categoryOptions.includes(taskEditorCategory)) {
+      return categoryOptions;
+    }
+    return mergeUniqueValues([taskEditorCategory, ...categoryOptions]);
+  }, [categoryOptions, taskEditorCategory]);
+
+  const taskEditorTagSuggestions = useMemo(
+    () => tagOptions.filter((item) => !taskEditorTags.includes(item)).slice(0, 8),
+    [tagOptions, taskEditorTags],
+  );
+
+  const getCategoryColor = useCallback(
+    (category: string) => normalizeHexColor(categoryColorMap[category]) ?? DEFAULT_CATEGORY_COLOR,
+    [categoryColorMap],
+  );
 
   const libraryTodos = useMemo(() => {
     return todos
@@ -550,6 +638,12 @@ export default function TodayPage() {
 
       setTodos((prev) => [created, ...prev]);
       setCategoryRegistry((prev) => mergeUniqueValues([...prev, input.category]));
+      setCategoryColorMap((prev) => {
+        if (normalizeHexColor(prev[input.category])) {
+          return prev;
+        }
+        return { ...prev, [input.category]: DEFAULT_CATEGORY_COLOR };
+      });
       setTagRegistry((prev) => mergeUniqueValues([...prev, ...input.tags]));
 
       if (session) {
@@ -570,7 +664,8 @@ export default function TodayPage() {
     setTaskEditorTodoId(todo.id);
     setTaskEditorTodoTitle(todo.title);
     setTaskEditorCategory(readCategory(todo));
-    setTaskEditorTagsText(readTags(todo).join("，"));
+    setTaskEditorTags(readTags(todo));
+    setTaskEditorTagDraft("");
     setTaskEditorContent(readContent(todo));
     setTaskEditorNotice(null);
     setTaskEditorOpen(true);
@@ -583,13 +678,55 @@ export default function TodayPage() {
     setTaskEditorOpen(false);
   }
 
+  function commitTaskEditorTags(values: string[]) {
+    if (values.length === 0) {
+      return;
+    }
+    setTaskEditorTags((prev) => mergeUniqueValues([...prev, ...values]));
+  }
+
+  function commitTaskEditorTagDraft() {
+    const value = taskEditorTagDraft.trim();
+    if (!value) {
+      return;
+    }
+    commitTaskEditorTags([value]);
+    setTaskEditorTagDraft("");
+  }
+
+  function handleTaskEditorTagInputChange(value: string) {
+    if (!/[锛?\s]/.test(value)) {
+      setTaskEditorTagDraft(value);
+      return;
+    }
+    const parsed = parseDraftTags(value);
+    commitTaskEditorTags(parsed.committed);
+    setTaskEditorTagDraft(parsed.draft);
+  }
+
+  function handleTaskEditorTagInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+    if (event.key === "Backspace" && !taskEditorTagDraft && taskEditorTags.length > 0) {
+      event.preventDefault();
+      setTaskEditorTags((prev) => prev.slice(0, -1));
+      return;
+    }
+    if (event.key === " " || event.key === "Enter" || event.key === "," || event.key === "，") {
+      event.preventDefault();
+      commitTaskEditorTagDraft();
+    }
+  }
+
   async function handleSaveTaskEditor() {
     if (!taskEditorTodoId || taskEditorSaving || taskEditorDeleting) {
       return;
     }
 
     const nextCategory = taskEditorCategory.trim() || DEFAULT_CATEGORY;
-    const nextTags = parseTagsText(taskEditorTagsText);
+    const parsedDraft = parseDraftTags(taskEditorTagDraft);
+    const nextTags = mergeUniqueValues([...taskEditorTags, ...parsedDraft.committed, parsedDraft.draft].filter(Boolean));
     const nextContent = taskEditorContent.trim();
 
     setTaskEditorSaving(true);
@@ -603,7 +740,15 @@ export default function TodayPage() {
       });
       setTodos((prev) => prev.map((todo) => (todo.id === updated.id ? updated : todo)));
       setCategoryRegistry((prev) => mergeUniqueValues([...prev, nextCategory]));
+      setCategoryColorMap((prev) => {
+        if (normalizeHexColor(prev[nextCategory])) {
+          return prev;
+        }
+        return { ...prev, [nextCategory]: DEFAULT_CATEGORY_COLOR };
+      });
       setTagRegistry((prev) => mergeUniqueValues([...prev, ...nextTags]));
+      setTaskEditorTags(nextTags);
+      setTaskEditorTagDraft("");
       setTaskEditorNotice("已保存任务信息。");
     } catch (saveError) {
       setTaskEditorNotice(errorToText(saveError));
@@ -631,9 +776,18 @@ export default function TodayPage() {
     }
   }
 
+  function handleUpdateCategoryColor(category: string, color: string) {
+    const normalized = normalizeHexColor(color);
+    if (!normalized) {
+      return;
+    }
+    setCategoryColorMap((prev) => ({ ...prev, [category]: normalized }));
+  }
+
   function handleAddCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = newCategoryName.trim();
+    const color = normalizeHexColor(newCategoryColor) ?? DEFAULT_CATEGORY_COLOR;
     if (!value) {
       return;
     }
@@ -642,7 +796,9 @@ export default function TodayPage() {
       return;
     }
     setCategoryRegistry((prev) => mergeUniqueValues([...prev, value]));
+    setCategoryColorMap((prev) => ({ ...prev, [value]: color }));
     setNewCategoryName("");
+    setNewCategoryColor(DEFAULT_CATEGORY_COLOR);
     setMetaNotice("已新增分类。");
   }
 
@@ -672,6 +828,10 @@ export default function TodayPage() {
       setEditingCategoryName("");
       return;
     }
+    if (categoryOptions.includes(nextName)) {
+      setMetaNotice("分类已存在。");
+      return;
+    }
 
     const ok = await runMetaMutation(async () => {
       const affected = todos.filter((todo) => readCategory(todo) === source);
@@ -679,6 +839,13 @@ export default function TodayPage() {
         await Promise.all(affected.map((todo) => updateTodo(todo.id, { category: nextName })));
       }
       setCategoryRegistry((prev) => mergeUniqueValues([...prev.filter((item) => item !== source), nextName]));
+      setCategoryColorMap((prev) => {
+        const next = { ...prev };
+        const sourceColor = normalizeHexColor(next[source]);
+        delete next[source];
+        next[nextName] = sourceColor ?? DEFAULT_CATEGORY_COLOR;
+        return next;
+      });
     });
 
     if (ok) {
@@ -700,6 +867,11 @@ export default function TodayPage() {
         await Promise.all(affected.map((todo) => updateTodo(todo.id, { category: DEFAULT_CATEGORY })));
       }
       setCategoryRegistry((prev) => prev.filter((item) => item !== category));
+      setCategoryColorMap((prev) => {
+        const next = { ...prev };
+        delete next[category];
+        return next;
+      });
     });
 
     if (ok) {
@@ -798,7 +970,7 @@ export default function TodayPage() {
 
       <section className="mobile-card task-board grow">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="page-title text-lg font-bold text-main">任务</h2>
+          <h2 className="page-title text-lg font-bold text-main">浠诲姟</h2>
           <span className="progress-chip">
             {completedCount}/{totalCount}
           </span>
@@ -826,7 +998,7 @@ export default function TodayPage() {
 
       <section className="center-controls">
         <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
-          添加任务
+          娣诲姞浠诲姟
         </button>
         {session ? (
           <button
@@ -867,17 +1039,17 @@ export default function TodayPage() {
               setMetaNotice(null);
             }}
           >
-            管理
+            绠＄悊
           </button>
           <button type="button" className="btn-primary h-9 px-3 text-xs" onClick={() => setDrawerOpen(true)}>
-            新建
+            鏂板缓
           </button>
         </div>
       </header>
 
       <section className="mobile-card grow">
         <div className="mb-2 flex items-center justify-between text-xs text-subtle">
-          <span>可见任务 {libraryTodos.length}</span>
+          <span>鍙浠诲姟 {libraryTodos.length}</span>
           <span>
             {session ? "会话中" : "计划中"} {plannedIds.length}
           </span>
@@ -888,6 +1060,7 @@ export default function TodayPage() {
             {libraryTodos.map((todo) => {
               const selected = plannedIds.includes(todo.id);
               const category = readCategory(todo);
+              const categoryColor = getCategoryColor(category);
               const tags = readTags(todo);
               const content = readContent(todo);
 
@@ -902,7 +1075,9 @@ export default function TodayPage() {
                       {todo.title}
                     </p>
                     <div className="task-meta-row mt-2">
-                      <span className="task-pill">{category}</span>
+                      <span className="task-pill" style={categoryPillStyle(categoryColor)}>
+                        {category}
+                      </span>
                       {tags.map((tag) => (
                         <span key={`${todo.id}-${tag}`} className="task-pill task-pill-tag">
                           #{tag}
@@ -925,10 +1100,10 @@ export default function TodayPage() {
                       : session
                         ? selected
                           ? "会话中"
-                          : "加入"
+                          : "鍔犲叆"
                         : selected
-                          ? "移出"
-                          : "加入"}
+                          ? "绉诲嚭"
+                          : "鍔犲叆"}
                   </button>
                 </li>
               );
@@ -955,7 +1130,7 @@ export default function TodayPage() {
                 onClick={() => setMetaManagerOpen(false)}
                 disabled={metaSaving}
               >
-                关闭
+                鍏抽棴
               </button>
             </header>
 
@@ -969,7 +1144,7 @@ export default function TodayPage() {
                 }}
                 disabled={metaSaving}
               >
-                分类
+                鍒嗙被
               </button>
               <button
                 type="button"
@@ -980,27 +1155,41 @@ export default function TodayPage() {
                 }}
                 disabled={metaSaving}
               >
-                标签
+                鏍囩
               </button>
             </div>
 
             {metaTab === "category" ? (
               <div className="meta-manager-body">
-                <form className="meta-manager-create" onSubmit={handleAddCategory}>
+                <form className="meta-manager-create meta-manager-create-category" onSubmit={handleAddCategory}>
                   <input
                     value={newCategoryName}
                     onChange={(event) => setNewCategoryName(event.target.value)}
                     className="input-base h-10"
-                    placeholder="新增分类"
                     disabled={metaSaving}
                   />
+                  <input
+                    type="color"
+                    value={newCategoryColor}
+                    onChange={(event) => {
+                      const normalized = normalizeHexColor(event.target.value);
+                      if (normalized) {
+                        setNewCategoryColor(normalized);
+                      }
+                    }}
+                    className="meta-manager-color-input"
+                    disabled={metaSaving}
+                    aria-label="閫夋嫨鍒嗙被棰滆壊"
+                  />
                   <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
-                    新增
+                    鏂板
                   </button>
                 </form>
 
                 <div className="meta-manager-list">
-                  {categoryOptions.map((category) => (
+                  {categoryOptions.map((category) => {
+                    const categoryColor = getCategoryColor(category);
+                    return (
                     <article key={category} className="meta-manager-row">
                       {editingCategory === category ? (
                         <div className="meta-manager-row-editor">
@@ -1016,7 +1205,7 @@ export default function TodayPage() {
                             onClick={() => void handleRenameCategory(category, editingCategoryName)}
                             disabled={metaSaving}
                           >
-                            保存
+                            淇濆瓨
                           </button>
                           <button
                             type="button"
@@ -1027,13 +1216,24 @@ export default function TodayPage() {
                             }}
                             disabled={metaSaving}
                           >
-                            取消
+                            鍙栨秷
                           </button>
                         </div>
                       ) : (
                         <div className="meta-manager-row-main">
-                          <span className="meta-manager-name">{category}</span>
+                          <span className="meta-manager-name-wrap">
+                            <span className="meta-manager-swatch" style={{ backgroundColor: categoryColor }} />
+                            <span className="meta-manager-name">{category}</span>
+                          </span>
                           <div className="meta-manager-row-actions">
+                            <input
+                              type="color"
+                              value={categoryColor}
+                              onChange={(event) => handleUpdateCategoryColor(category, event.target.value)}
+                              className="meta-manager-color-input"
+                              disabled={metaSaving}
+                              aria-label={`Category color ${category}`}
+                            />
                             <button
                               type="button"
                               className="btn-muted h-8 px-3 text-xs"
@@ -1044,21 +1244,21 @@ export default function TodayPage() {
                               }}
                               disabled={metaSaving}
                             >
-                              重命名
-                            </button>
+                              閲嶅懡鍚?                            </button>
                             <button
                               type="button"
                               className="btn-danger h-8 px-3 text-xs"
                               onClick={() => void handleDeleteCategory(category)}
                               disabled={metaSaving || category === DEFAULT_CATEGORY}
                             >
-                              删除
+                              鍒犻櫎
                             </button>
                           </div>
                         </div>
                       )}
                     </article>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
@@ -1068,11 +1268,10 @@ export default function TodayPage() {
                     value={newTagName}
                     onChange={(event) => setNewTagName(event.target.value)}
                     className="input-base h-10"
-                    placeholder="新增标签"
                     disabled={metaSaving}
                   />
                   <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
-                    新增
+                    鏂板
                   </button>
                 </form>
 
@@ -1093,7 +1292,7 @@ export default function TodayPage() {
                             onClick={() => void handleRenameTag(tag, editingTagName)}
                             disabled={metaSaving}
                           >
-                            保存
+                            淇濆瓨
                           </button>
                           <button
                             type="button"
@@ -1104,7 +1303,7 @@ export default function TodayPage() {
                             }}
                             disabled={metaSaving}
                           >
-                            取消
+                            鍙栨秷
                           </button>
                         </div>
                       ) : (
@@ -1121,15 +1320,14 @@ export default function TodayPage() {
                               }}
                               disabled={metaSaving}
                             >
-                              重命名
-                            </button>
+                              閲嶅懡鍚?                            </button>
                             <button
                               type="button"
                               className="btn-danger h-8 px-3 text-xs"
                               onClick={() => void handleDeleteTag(tag)}
                               disabled={metaSaving}
                             >
-                              删除
+                              鍒犻櫎
                             </button>
                           </div>
                         </div>
@@ -1149,14 +1347,14 @@ export default function TodayPage() {
         <div className="task-editor-backdrop" onClick={closeTaskEditor} aria-hidden={!taskEditorOpen}>
           <aside className="task-editor-sheet" onClick={(event) => event.stopPropagation()}>
             <header className="task-editor-header">
-              <h3 className="page-title text-lg font-bold text-main">编辑任务</h3>
+              <h3 className="page-title text-lg font-bold text-main">缂栬緫浠诲姟</h3>
               <button
                 type="button"
                 className="btn-muted h-8 px-3 text-xs"
                 onClick={closeTaskEditor}
                 disabled={taskEditorSaving || taskEditorDeleting}
               >
-                关闭
+                鍏抽棴
               </button>
             </header>
 
@@ -1164,26 +1362,61 @@ export default function TodayPage() {
 
             <label className="task-meta-form-item">
               <span className="task-meta-form-label">分类</span>
-              <input
+              <select
                 value={taskEditorCategory}
                 onChange={(event) => setTaskEditorCategory(event.target.value)}
                 className="input-base h-10"
-                list="task-editor-category-options"
-                placeholder="默认未分类"
                 disabled={taskEditorSaving || taskEditorDeleting}
-              />
+              >
+                {taskEditorCategoryOptions.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label className="task-meta-form-item">
               <span className="task-meta-form-label">标签</span>
-              <input
-                value={taskEditorTagsText}
-                onChange={(event) => setTaskEditorTagsText(event.target.value)}
-                className="input-base h-10"
-                list="task-editor-tag-options"
-                placeholder="逗号分隔多个标签"
-                disabled={taskEditorSaving || taskEditorDeleting}
-              />
+              <div className="tag-input-shell">
+                {taskEditorTags.map((tag) => (
+                  <span key={tag} className="tag-input-chip">
+                    #{tag}
+                    <button
+                      type="button"
+                      className="tag-input-chip-remove"
+                      onClick={() => setTaskEditorTags((prev) => prev.filter((item) => item !== tag))}
+                      disabled={taskEditorSaving || taskEditorDeleting}
+                      aria-label={`删除标签 ${tag}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={taskEditorTagDraft}
+                  onChange={(event) => handleTaskEditorTagInputChange(event.target.value)}
+                  onKeyDown={handleTaskEditorTagInputKeyDown}
+                  onBlur={commitTaskEditorTagDraft}
+                  className="tag-input-draft"
+                  disabled={taskEditorSaving || taskEditorDeleting}
+                />
+              </div>
+              {taskEditorTagSuggestions.length > 0 ? (
+                <div className="tag-suggestion-row">
+                  {taskEditorTagSuggestions.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className="tag-suggestion-btn"
+                      onClick={() => commitTaskEditorTags([item])}
+                      disabled={taskEditorSaving || taskEditorDeleting}
+                    >
+                      #{item}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </label>
 
             <label className="task-meta-form-item">
@@ -1192,21 +1425,9 @@ export default function TodayPage() {
                 value={taskEditorContent}
                 onChange={(event) => setTaskEditorContent(event.target.value)}
                 className="input-base min-h-[6rem] resize-none"
-                placeholder="补充任务细节（可选）"
                 disabled={taskEditorSaving || taskEditorDeleting}
               />
             </label>
-
-            <datalist id="task-editor-category-options">
-              {categoryOptions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-            <datalist id="task-editor-tag-options">
-              {tagOptions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
 
             <div className="task-editor-actions">
               <button
@@ -1215,7 +1436,7 @@ export default function TodayPage() {
                 onClick={() => void handleDeleteTaskFromEditor()}
                 disabled={taskEditorSaving || taskEditorDeleting}
               >
-                {taskEditorDeleting ? "删除中..." : "删除任务"}
+                {taskEditorDeleting ? "鍒犻櫎涓?.." : "鍒犻櫎浠诲姟"}
               </button>
               <button
                 type="button"
@@ -1223,7 +1444,7 @@ export default function TodayPage() {
                 onClick={() => void handleSaveTaskEditor()}
                 disabled={taskEditorSaving || taskEditorDeleting}
               >
-                {taskEditorSaving ? "保存中..." : "保存修改"}
+                {taskEditorSaving ? "淇濆瓨涓?.." : "淇濆瓨淇敼"}
               </button>
             </div>
 
@@ -1301,14 +1522,14 @@ export default function TodayPage() {
         <p className="mt-3 text-xs text-subtle">
           与前一周期对比：任务钟 {efficiency.periodDelta.sessionCount >= 0 ? "+" : ""}
           {efficiency.periodDelta.sessionCount}，时长 {efficiency.periodDelta.totalDurationSeconds >= 0 ? "+" : ""}
-          {formatDuration(Math.abs(efficiency.periodDelta.totalDurationSeconds))}，完成率{" "}
+          {formatDuration(Math.abs(efficiency.periodDelta.totalDurationSeconds))}，完成率 
           {efficiency.periodDelta.completionRate >= 0 ? "+" : ""}
           {efficiency.periodDelta.completionRate}%
         </p>
       </section>
 
       <section className="mobile-card">
-        <h3 className="page-title text-lg font-bold text-main">分类贡献</h3>
+        <h3 className="page-title text-lg font-bold text-main">鍒嗙被璐＄尞</h3>
         {categoryStats.length === 0 ? null : (
           <div className="mt-3 space-y-3">
             {categoryStats.map((item) => {
@@ -1318,7 +1539,7 @@ export default function TodayPage() {
                   <div className="mb-1 flex items-center justify-between text-xs">
                     <span className="text-main">{item.category}</span>
                     <span className="text-subtle">
-                      {item.completedCount}/{item.taskCount} · {Math.round(item.completionRate)}%
+                      {item.completedCount}/{item.taskCount} 路 {Math.round(item.completionRate)}%
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-[rgba(148,163,184,0.2)]">
@@ -1384,6 +1605,7 @@ export default function TodayPage() {
           todos={pendingTodos}
           selectedIds={plannedIds}
           categoryOptions={categoryOptions}
+          categoryColorMap={categoryColorMap}
           tagOptions={tagOptions}
           creating={creatingTask}
           sessionActive={Boolean(session)}
