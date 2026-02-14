@@ -91,3 +91,10 @@
   - Why：原动效节奏偏快，影响观感与可控感。
   - Impact：`app/globals.css` 的过渡时长、入场动画、登录输入框展开与抖动时长均已放慢；`app/auth/page.tsx` 同步错误态定时器。
   - Verify：本地 `npm run lint && npm run typecheck && npm run build` 通过。
+
+## Decisions（增量）
+
+- **[2026-02-14] 动效二次降速**：进一步放慢登录框展开与页面入场速度。
+  - Why：第一次降速后体感仍偏快。
+  - Impact：`app/globals.css` 新增 `--dur-expand`，并显著拉长 `auth-passcode-input` 展开、`staggered-reveal` 入场与背景漂移动效；`app/auth/page.tsx` 错误态计时同步为 780ms。
+  - Verify：本地 `npm run lint && npm run typecheck && npm run build` 通过。

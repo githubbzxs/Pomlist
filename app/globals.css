@@ -16,9 +16,10 @@
   --danger: #ef4444;
   --shadow-soft: 0 16px 40px rgba(2, 8, 23, 0.5);
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast: 240ms;
-  --dur-mid: 420ms;
-  --dur-slow: 620ms;
+  --dur-fast: 280ms;
+  --dur-mid: 520ms;
+  --dur-slow: 760ms;
+  --dur-expand: 1200ms;
 }
 
 * {
@@ -55,7 +56,7 @@ body::before {
   );
   filter: blur(90px);
   opacity: 0.42;
-  animation: ambient-drift 40s linear infinite;
+  animation: ambient-drift 52s linear infinite;
   z-index: -1;
 }
 
@@ -123,23 +124,23 @@ button {
 }
 
 .staggered-reveal > * {
-  animation: card-rise 720ms var(--ease-smooth) both;
+  animation: card-rise 980ms var(--ease-smooth) both;
 }
 
 .staggered-reveal > *:nth-child(2) {
-  animation-delay: 120ms;
+  animation-delay: 180ms;
 }
 
 .staggered-reveal > *:nth-child(3) {
-  animation-delay: 200ms;
+  animation-delay: 320ms;
 }
 
 .staggered-reveal > *:nth-child(4) {
-  animation-delay: 280ms;
+  animation-delay: 460ms;
 }
 
 .staggered-reveal > *:nth-child(5) {
-  animation-delay: 360ms;
+  animation-delay: 600ms;
 }
 
 .btn-primary {
@@ -221,12 +222,12 @@ button {
   text-align: center;
   box-shadow: 0 10px 24px rgba(2, 8, 23, 0.5);
   transition:
-    width var(--dur-slow) var(--ease-smooth),
-    height var(--dur-slow) var(--ease-smooth),
+    width var(--dur-expand) var(--ease-smooth),
+    height var(--dur-expand) var(--ease-smooth),
     border-color var(--dur-mid) var(--ease-smooth),
-    box-shadow var(--dur-slow) var(--ease-smooth),
-    transform var(--dur-slow) var(--ease-smooth);
-  animation: auth-passcode-idle 7.2s var(--ease-smooth) infinite;
+    box-shadow var(--dur-expand) var(--ease-smooth),
+    transform var(--dur-expand) var(--ease-smooth);
+  animation: auth-passcode-idle 10s var(--ease-smooth) infinite;
 }
 
 .auth-passcode-input-expanded {
@@ -249,7 +250,7 @@ button {
   box-shadow:
     0 0 0 3px rgba(239, 68, 68, 0.24),
     0 16px 34px rgba(127, 29, 29, 0.38);
-  animation: auth-passcode-shake 520ms var(--ease-smooth);
+  animation: auth-passcode-shake 780ms var(--ease-smooth);
 }
 
 @keyframes ambient-drift {

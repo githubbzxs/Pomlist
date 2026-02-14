@@ -6,7 +6,7 @@ import { getAccessToken } from "@/lib/client/session";
 import { signIn } from "@/lib/client/pomlist-api";
 
 const PASSCODE_LENGTH = 4;
-const SHAKE_DURATION_MS = 520;
+const SHAKE_DURATION_MS = 780;
 
 export default function AuthPage() {
   const router = useRouter();
