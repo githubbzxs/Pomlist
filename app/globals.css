@@ -16,8 +16,9 @@
   --danger: #ef4444;
   --shadow-soft: 0 16px 40px rgba(2, 8, 23, 0.5);
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast: 180ms;
-  --dur-mid: 300ms;
+  --dur-fast: 240ms;
+  --dur-mid: 420ms;
+  --dur-slow: 620ms;
 }
 
 * {
@@ -54,7 +55,7 @@ body::before {
   );
   filter: blur(90px);
   opacity: 0.42;
-  animation: ambient-drift 28s linear infinite;
+  animation: ambient-drift 40s linear infinite;
   z-index: -1;
 }
 
@@ -122,23 +123,23 @@ button {
 }
 
 .staggered-reveal > * {
-  animation: card-rise 520ms var(--ease-smooth) both;
+  animation: card-rise 720ms var(--ease-smooth) both;
 }
 
 .staggered-reveal > *:nth-child(2) {
-  animation-delay: 70ms;
-}
-
-.staggered-reveal > *:nth-child(3) {
   animation-delay: 120ms;
 }
 
+.staggered-reveal > *:nth-child(3) {
+  animation-delay: 200ms;
+}
+
 .staggered-reveal > *:nth-child(4) {
-  animation-delay: 170ms;
+  animation-delay: 280ms;
 }
 
 .staggered-reveal > *:nth-child(5) {
-  animation-delay: 220ms;
+  animation-delay: 360ms;
 }
 
 .btn-primary {
@@ -220,12 +221,12 @@ button {
   text-align: center;
   box-shadow: 0 10px 24px rgba(2, 8, 23, 0.5);
   transition:
-    width var(--dur-mid) var(--ease-smooth),
-    height var(--dur-mid) var(--ease-smooth),
-    border-color var(--dur-fast) var(--ease-smooth),
-    box-shadow var(--dur-mid) var(--ease-smooth),
-    transform var(--dur-mid) var(--ease-smooth);
-  animation: auth-passcode-idle 4.8s var(--ease-smooth) infinite;
+    width var(--dur-slow) var(--ease-smooth),
+    height var(--dur-slow) var(--ease-smooth),
+    border-color var(--dur-mid) var(--ease-smooth),
+    box-shadow var(--dur-slow) var(--ease-smooth),
+    transform var(--dur-slow) var(--ease-smooth);
+  animation: auth-passcode-idle 7.2s var(--ease-smooth) infinite;
 }
 
 .auth-passcode-input-expanded {
@@ -248,7 +249,7 @@ button {
   box-shadow:
     0 0 0 3px rgba(239, 68, 68, 0.24),
     0 16px 34px rgba(127, 29, 29, 0.38);
-  animation: auth-passcode-shake 360ms var(--ease-smooth);
+  animation: auth-passcode-shake 520ms var(--ease-smooth);
 }
 
 @keyframes ambient-drift {
