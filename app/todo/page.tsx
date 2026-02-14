@@ -191,9 +191,9 @@ export default function TodoPage() {
   }
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="staggered-reveal space-y-4 pb-20">
       <section className="panel p-4">
-        <h2 className="page-title text-xl font-bold text-slate-900">新建任务</h2>
+        <h2 className="page-title text-xl font-bold text-main">新建任务</h2>
         <form onSubmit={handleCreate} className="mt-3 grid gap-3 md:grid-cols-2">
           <input
             value={title}
@@ -220,7 +220,7 @@ export default function TodoPage() {
             placeholder="备注（可选）"
           />
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-600">优先级</span>
+            <span className="text-sm text-subtle">优先级</span>
             <select
               value={priority}
               onChange={(event) => setPriority(Number(event.target.value) as 1 | 2 | 3)}
@@ -238,13 +238,13 @@ export default function TodoPage() {
       </section>
 
       {error ? (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-xl border border-[rgba(248,113,113,0.36)] bg-[rgba(127,29,29,0.32)] px-3 py-2 text-sm text-red-200">{error}</p>
       ) : null}
 
       <section className="panel p-4">
         <div className="flex items-center justify-between">
-          <h2 className="page-title text-xl font-bold text-slate-900">待办任务</h2>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+          <h2 className="page-title text-xl font-bold text-main">待办任务</h2>
+          <span className="rounded-full bg-[rgba(148,163,184,0.14)] px-3 py-1 text-xs font-semibold text-subtle">
             {pendingTodos.length} 项
           </span>
         </div>
@@ -274,8 +274,8 @@ export default function TodoPage() {
                         />
                       ) : (
                         <>
-                          <p className="break-words text-sm text-slate-900">{todo.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="break-words text-sm text-main">{todo.title}</p>
+                          <p className="mt-1 text-xs text-subtle">
                             优先级 {todo.priority} {todo.subject ? `· ${todo.subject}` : ""}
                           </p>
                         </>
@@ -313,8 +313,8 @@ export default function TodoPage() {
 
       <section className="panel p-4">
         <div className="flex items-center justify-between">
-          <h2 className="page-title text-xl font-bold text-slate-900">已完成</h2>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+          <h2 className="page-title text-xl font-bold text-main">已完成</h2>
+          <span className="rounded-full border border-[rgba(74,222,128,0.35)] bg-[rgba(34,197,94,0.2)] px-3 py-1 text-xs font-semibold text-emerald-200">
             {completedTodos.length} 项
           </span>
         </div>
@@ -324,7 +324,7 @@ export default function TodoPage() {
           <ul className="mt-3 space-y-2">
             {completedTodos.map((todo) => (
               <li key={todo.id} className="panel-solid flex items-center justify-between gap-3 p-3">
-                <p className="line-clamp-1 text-sm text-slate-500 line-through">{todo.title}</p>
+                <p className="line-clamp-1 text-sm text-subtle line-through">{todo.title}</p>
                 <div className="flex gap-2">
                   <button type="button" className="btn-muted h-9 px-3 text-xs" onClick={() => void handleToggleStatus(todo)}>
                     恢复

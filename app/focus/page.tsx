@@ -108,19 +108,19 @@ export default function FocusPage() {
   }
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="staggered-reveal space-y-4 pb-20">
       <section className="panel p-6 text-center">
         <p className="text-sm text-subtle">当前完成进度</p>
-        <p className="page-title mt-2 text-5xl font-bold text-slate-900">
+        <p className="page-title mt-2 text-5xl font-bold text-main">
           {session.completedTaskCount}/{session.totalTaskCount}
         </p>
-        <p className="mt-2 text-sm text-slate-600">已用时 {formatMmSs(displaySeconds)}</p>
+        <p className="mt-2 text-sm text-subtle">已用时 {formatMmSs(displaySeconds)}</p>
       </section>
 
       <section className="panel p-4">
         <div className="flex items-center justify-between">
-          <h2 className="page-title text-xl font-bold text-slate-900">本钟任务</h2>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+          <h2 className="page-title text-xl font-bold text-main">本钟任务</h2>
+          <span className="rounded-full bg-[rgba(148,163,184,0.14)] px-3 py-1 text-xs font-semibold text-subtle">
             完成率 {Math.round(session.completionRate)}%
           </span>
         </div>
@@ -134,11 +134,17 @@ export default function FocusPage() {
                   onChange={(event) => void toggleTask(task.todoId, event.target.checked)}
                   className="h-4 w-4 accent-orange-500"
                 />
-                <span className={`line-clamp-1 text-sm ${task.completed ? "text-slate-500 line-through" : "text-slate-900"}`}>
+                <span className={`line-clamp-1 text-sm ${task.completed ? "text-subtle line-through" : "text-main"}`}>
                   {task.title}
                 </span>
               </label>
-              <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${task.completed ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+              <span
+                className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                  task.completed
+                    ? "border border-[rgba(74,222,128,0.35)] bg-[rgba(34,197,94,0.2)] text-emerald-200"
+                    : "bg-[rgba(148,163,184,0.14)] text-subtle"
+                }`}
+              >
                 {task.completed ? "已完成" : "进行中"}
               </span>
             </li>
@@ -146,7 +152,11 @@ export default function FocusPage() {
         </ul>
       </section>
 
-      {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="rounded-xl border border-[rgba(248,113,113,0.36)] bg-[rgba(127,29,29,0.32)] px-3 py-2 text-sm text-red-200">
+          {error}
+        </p>
+      ) : null}
 
       <div className="fixed inset-x-0 bottom-16 z-30 px-4 md:bottom-6 md:left-auto md:right-8 md:inset-x-auto md:w-80">
         <button type="button" onClick={() => setDialogOpen(true)} className="btn-primary h-12 w-full text-sm shadow-lg">

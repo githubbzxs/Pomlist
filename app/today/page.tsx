@@ -115,30 +115,30 @@ export default function TodayPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="staggered-reveal space-y-4">
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <article className="panel p-4">
           <p className="text-xs text-subtle">今日任务钟</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{dashboard.sessionCount}</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{dashboard.sessionCount}</p>
         </article>
         <article className="panel p-4">
           <p className="text-xs text-subtle">已完成任务</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{dashboard.completedTaskCount}</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{dashboard.completedTaskCount}</p>
         </article>
         <article className="panel p-4">
           <p className="text-xs text-subtle">今日完成率</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{Math.round(dashboard.completionRate)}%</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{Math.round(dashboard.completionRate)}%</p>
         </article>
         <article className="panel p-4">
           <p className="text-xs text-subtle">连续天数</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{dashboard.streakDays} 天</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{dashboard.streakDays} 天</p>
         </article>
       </section>
 
       <section className="panel p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="page-title text-xl font-bold text-slate-900">今日专注时长</h2>
+            <h2 className="page-title text-xl font-bold text-main">今日专注时长</h2>
             <p className="mt-1 text-sm text-subtle">{formatDuration(dashboard.totalDurationSeconds)}</p>
           </div>
           <button type="button" onClick={() => void loadData()} className="btn-muted h-10 px-4 text-sm">
@@ -152,7 +152,7 @@ export default function TodayPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm text-subtle">当前有进行中的任务钟</p>
-              <p className="page-title mt-1 text-3xl font-bold text-slate-900">
+              <p className="page-title mt-1 text-3xl font-bold text-main">
                 {activeSession.completedTaskCount}/{activeSession.totalTaskCount}
               </p>
             </div>
@@ -163,7 +163,7 @@ export default function TodayPage() {
         </section>
       ) : (
         <section className="panel p-5">
-          <h2 className="page-title text-xl font-bold text-slate-900">快速开始任务钟</h2>
+          <h2 className="page-title text-xl font-bold text-main">快速开始任务钟</h2>
           <p className="mt-1 text-sm text-subtle">可选择多个任务开始一次任务钟，支持 8/10 结束记录。</p>
           {pendingTodos.length === 0 ? (
             <div className="panel-solid mt-4 p-4 text-sm text-subtle">暂无待办任务，先去待办页添加。</div>
@@ -177,7 +177,7 @@ export default function TodayPage() {
                     onChange={() => toggleSelected(todo.id)}
                     className="h-4 w-4 accent-orange-500"
                   />
-                  <span className="line-clamp-1 text-sm text-slate-800">{todo.title}</span>
+                  <span className="line-clamp-1 text-sm text-main">{todo.title}</span>
                 </label>
               ))}
             </div>
@@ -198,7 +198,11 @@ export default function TodayPage() {
         </section>
       )}
 
-      {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="rounded-xl border border-[rgba(248,113,113,0.36)] bg-[rgba(127,29,29,0.32)] px-3 py-2 text-sm text-red-200">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

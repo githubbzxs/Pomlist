@@ -15,7 +15,7 @@ export default function RootPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
       <section className="panel w-full max-w-sm p-6 text-center">
-        <p className="page-title text-xl font-bold text-slate-900">Pomlist</p>
+        <p className="page-title text-xl font-bold text-main">Pomlist</p>
         <p className="mt-2 text-sm text-subtle">正在为你跳转到合适页面...</p>
       </section>
     </main>

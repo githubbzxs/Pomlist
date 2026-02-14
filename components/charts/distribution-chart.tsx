@@ -23,12 +23,12 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
         return (
           <div key={bucket.bucketLabel}>
             <div className="mb-1 flex items-center justify-between text-sm">
-              <span className="text-slate-700">{bucket.bucketLabel}</span>
-              <span className="font-semibold text-slate-900">
+              <span className="text-subtle">{bucket.bucketLabel}</span>
+              <span className="font-semibold text-main">
                 {bucket.sessionCount} 次 · {minutes} 分钟
               </span>
             </div>
-            <div className="h-3 rounded-full bg-slate-100">
+            <div className="h-3 rounded-full bg-[rgba(148,163,184,0.16)]">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400"
                 style={{ width: `${ratio}%` }}

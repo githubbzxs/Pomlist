@@ -54,8 +54,8 @@ function NavEntry({
       href={item.href}
       className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition ${
         active
-          ? "border-orange-300 bg-orange-50 text-orange-800 shadow-sm"
-          : "border-slate-200/70 bg-white/60 text-slate-600 hover:border-orange-200"
+          ? "border-[rgba(251,146,60,0.55)] bg-[rgba(249,115,22,0.2)] text-orange-100 shadow-sm"
+          : "border-[var(--line-soft)] bg-[rgba(15,23,42,0.45)] text-subtle hover:border-[rgba(56,189,248,0.45)] hover:text-main"
       }`}
     >
       <span aria-hidden className="text-lg leading-none">
@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <section className="panel w-full max-w-sm p-6 text-center">
-          <p className="page-title text-xl font-bold text-slate-900">Pomlist</p>
+          <p className="page-title text-xl font-bold text-main">Pomlist</p>
           <p className="mt-2 text-sm text-subtle">正在验证登录状态...</p>
         </section>
       </main>
@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-7xl md:p-4">
       <aside className="panel m-4 hidden w-64 shrink-0 p-4 md:flex md:flex-col">
-        <h1 className="page-title text-2xl font-bold text-slate-900">Pomlist</h1>
+        <h1 className="page-title text-2xl font-bold text-main">Pomlist</h1>
         <p className="mt-1 text-sm text-subtle">任务驱动番茄钟</p>
         <nav className="mt-5 flex flex-col gap-2">
           {NAV_ITEMS.map((item) => (
@@ -111,14 +111,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col pb-24 md:min-h-0 md:pb-6">
-        <header className="sticky top-0 z-20 border-b border-slate-200/60 bg-white/75 px-4 py-3 backdrop-blur md:rounded-t-2xl md:px-8">
-          <p className="page-title text-2xl font-bold text-slate-900">{header.title}</p>
+        <header className="sticky top-0 z-20 border-b border-[var(--line-soft)] bg-[rgba(2,6,23,0.78)] px-4 py-3 backdrop-blur md:rounded-t-2xl md:px-8">
+          <p className="page-title text-2xl font-bold text-main">{header.title}</p>
           <p className="text-sm text-subtle">{header.description}</p>
         </header>
         <main className="w-full flex-1 px-4 py-4 md:px-8 md:py-6">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/70 bg-white/90 px-3 py-2 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line-soft)] bg-[rgba(2,6,23,0.86)] px-3 py-2 backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-4 gap-2">
           {NAV_ITEMS.map((item) => {
             const active = pathname.startsWith(item.href);
@@ -127,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`flex flex-col items-center rounded-lg px-2 py-2 text-center transition ${
-                  active ? "bg-orange-50 text-orange-700" : "text-slate-500"
+                  active ? "bg-[rgba(249,115,22,0.2)] text-orange-200" : "text-subtle"
                 }`}
               >
                 <span aria-hidden className="text-sm leading-none">

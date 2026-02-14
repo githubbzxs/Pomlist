@@ -86,38 +86,38 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="staggered-reveal space-y-4 pb-20">
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <article className="panel p-4">
           <p className="text-xs text-subtle">今日任务钟</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{metrics.sessionCount}</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{metrics.sessionCount}</p>
         </article>
         <article className="panel p-4">
           <p className="text-xs text-subtle">今日完成任务</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{metrics.completedTaskCount}</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{metrics.completedTaskCount}</p>
         </article>
         <article className="panel p-4">
           <p className="text-xs text-subtle">完成率</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{Math.round(metrics.completionRate)}%</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{Math.round(metrics.completionRate)}%</p>
         </article>
         <article className="panel p-4">
           <p className="text-xs text-subtle">连续天数</p>
-          <p className="page-title mt-2 text-2xl font-bold text-slate-900">{metrics.streakDays} 天</p>
+          <p className="page-title mt-2 text-2xl font-bold text-main">{metrics.streakDays} 天</p>
         </article>
       </section>
 
       <section className="panel p-4">
         <div className="flex items-center justify-between">
-          <h2 className="page-title text-xl font-bold text-slate-900">今日专注时长</h2>
+          <h2 className="page-title text-xl font-bold text-main">今日专注时长</h2>
           <button type="button" className="btn-muted h-9 px-3 text-sm" onClick={() => void loadAnalytics()}>
             刷新
           </button>
         </div>
-        <p className="mt-3 text-lg font-semibold text-slate-800">{formatDuration(metrics.totalDurationSeconds)}</p>
+        <p className="mt-3 text-lg font-semibold text-main">{formatDuration(metrics.totalDurationSeconds)}</p>
       </section>
 
       <section className="panel p-4">
-        <h2 className="page-title text-xl font-bold text-slate-900">近 7 天趋势</h2>
+        <h2 className="page-title text-xl font-bold text-main">近 7 天趋势</h2>
         <p className="mt-1 text-sm text-subtle">按每日任务钟统计总时长</p>
         <div className="mt-3">
           <TrendChart points={trend} />
@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
       </section>
 
       <section className="panel p-4">
-        <h2 className="page-title text-xl font-bold text-slate-900">近 30 天时长分布</h2>
+        <h2 className="page-title text-xl font-bold text-main">近 30 天时长分布</h2>
         <p className="mt-1 text-sm text-subtle">按任务钟时长分桶统计</p>
         <div className="mt-3">
           <DistributionChart buckets={distribution} />
