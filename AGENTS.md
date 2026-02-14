@@ -202,3 +202,15 @@
 
 - **[2026-02-14] 当前状态**：桌面端仅保留无视觉边缘热区，手机端仅保留滑动切换；线上已生效。
 - **[2026-02-14] 下一步**：如需进一步“无提示化”，可把热区宽度再缩窄到更隐蔽。
+
+## Decisions（增量）
+
+- **[2026-02-14] 管理弹层显示修复**：`Task` 页“管理”弹层从 `fixed` 改为 `absolute`，避免在画布平移后延迟显示。
+  - Why：弹层位于带 `transform` 的画布内，`fixed` 会相对变换容器定位，导致右页点击后看不到，回中心页才出现。
+  - Impact：`app/globals.css` 的 `.meta-manager-backdrop` 定位改为 `position: absolute`。
+  - Verify：点击“管理”可在当前任务页立即显示；`npm run lint && npm run typecheck && npm run test && npm run build` 通过；VPS 已重建重启。
+
+## Status / Next（增量）
+
+- **[2026-02-14] 当前状态**：管理弹层即时显示问题已修复并上线。
+- **[2026-02-14] 下一步**：若你希望更彻底，可将该弹层改为 `Portal` 到 `body`，彻底与画布布局解耦。
