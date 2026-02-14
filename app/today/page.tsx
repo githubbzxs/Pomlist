@@ -11,6 +11,7 @@ import { ApiClientError } from "@/lib/client/api-client";
 import {
   addTasksToSession,
   createTodo,
+  deleteTodo,
   endSession,
   getActiveSession,
   getDashboardMetrics,
@@ -116,6 +117,20 @@ function readTags(todo: TodoItem): string[] {
   return raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
+function readContent(todo: TodoItem): string {
+  const raw = (todo as TodoItem & { notes?: unknown }).notes;
+  return typeof raw === "string" ? raw : "";
+}
+
+function parseTagsText(input: string): string[] {
+  return mergeUniqueValues(
+    input
+      .split(/[，,\s]+/)
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0),
+  );
+}
+
 function progressPercent(completed: number, total: number): number {
   if (total <= 0) {
     return 0;
@@ -185,6 +200,15 @@ export default function TodayPage() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingTagName, setEditingTagName] = useState("");
+  const [taskEditorOpen, setTaskEditorOpen] = useState(false);
+  const [taskEditorTodoId, setTaskEditorTodoId] = useState<string | null>(null);
+  const [taskEditorTodoTitle, setTaskEditorTodoTitle] = useState("");
+  const [taskEditorCategory, setTaskEditorCategory] = useState("");
+  const [taskEditorTagsText, setTaskEditorTagsText] = useState("");
+  const [taskEditorContent, setTaskEditorContent] = useState("");
+  const [taskEditorSaving, setTaskEditorSaving] = useState(false);
+  const [taskEditorDeleting, setTaskEditorDeleting] = useState(false);
+  const [taskEditorNotice, setTaskEditorNotice] = useState<string | null>(null);
 
   const [tickStartAt, setTickStartAt] = useState<Date | null>(null);
   const [tickSessionId, setTickSessionId] = useState<string | null>(null);
@@ -521,9 +545,12 @@ export default function TodayPage() {
         title: input.title,
         category: input.category,
         tags: input.tags,
+        notes: input.content || null,
       });
 
       setTodos((prev) => [created, ...prev]);
+      setCategoryRegistry((prev) => mergeUniqueValues([...prev, input.category]));
+      setTagRegistry((prev) => mergeUniqueValues([...prev, ...input.tags]));
 
       if (session) {
         const updated = await addTasksToSession(session.id, [created.id]);
@@ -536,6 +563,71 @@ export default function TodayPage() {
       setError(errorToText(createError));
     } finally {
       setCreatingTask(false);
+    }
+  }
+
+  function openTaskEditor(todo: TodoItem) {
+    setTaskEditorTodoId(todo.id);
+    setTaskEditorTodoTitle(todo.title);
+    setTaskEditorCategory(readCategory(todo));
+    setTaskEditorTagsText(readTags(todo).join("，"));
+    setTaskEditorContent(readContent(todo));
+    setTaskEditorNotice(null);
+    setTaskEditorOpen(true);
+  }
+
+  function closeTaskEditor() {
+    if (taskEditorSaving || taskEditorDeleting) {
+      return;
+    }
+    setTaskEditorOpen(false);
+  }
+
+  async function handleSaveTaskEditor() {
+    if (!taskEditorTodoId || taskEditorSaving || taskEditorDeleting) {
+      return;
+    }
+
+    const nextCategory = taskEditorCategory.trim() || DEFAULT_CATEGORY;
+    const nextTags = parseTagsText(taskEditorTagsText);
+    const nextContent = taskEditorContent.trim();
+
+    setTaskEditorSaving(true);
+    setTaskEditorNotice(null);
+    setError(null);
+    try {
+      const updated = await updateTodo(taskEditorTodoId, {
+        category: nextCategory,
+        tags: nextTags,
+        notes: nextContent || null,
+      });
+      setTodos((prev) => prev.map((todo) => (todo.id === updated.id ? updated : todo)));
+      setCategoryRegistry((prev) => mergeUniqueValues([...prev, nextCategory]));
+      setTagRegistry((prev) => mergeUniqueValues([...prev, ...nextTags]));
+      setTaskEditorNotice("已保存任务信息。");
+    } catch (saveError) {
+      setTaskEditorNotice(errorToText(saveError));
+    } finally {
+      setTaskEditorSaving(false);
+    }
+  }
+
+  async function handleDeleteTaskFromEditor() {
+    if (!taskEditorTodoId || taskEditorSaving || taskEditorDeleting) {
+      return;
+    }
+
+    setTaskEditorDeleting(true);
+    setTaskEditorNotice(null);
+    setError(null);
+    try {
+      await deleteTodo(taskEditorTodoId);
+      setTaskEditorOpen(false);
+      await loadData("refresh");
+    } catch (deleteError) {
+      setTaskEditorNotice(errorToText(deleteError));
+    } finally {
+      setTaskEditorDeleting(false);
     }
   }
 
@@ -797,10 +889,11 @@ export default function TodayPage() {
               const selected = plannedIds.includes(todo.id);
               const category = readCategory(todo);
               const tags = readTags(todo);
+              const content = readContent(todo);
 
               return (
                 <li key={todo.id} className="library-item">
-                  <div className="min-w-0">
+                  <button type="button" className="library-item-main" onClick={() => openTaskEditor(todo)}>
                     <p
                       className={`break-words text-sm ${
                         todo.status === "completed" ? "text-subtle line-through" : "text-main"
@@ -816,11 +909,15 @@ export default function TodayPage() {
                         </span>
                       ))}
                     </div>
-                  </div>
+                    {content ? <p className="task-content-preview">{content}</p> : null}
+                  </button>
                   <button
                     type="button"
                     className={selected ? "btn-primary h-9 px-3 text-xs" : "btn-muted h-9 px-3 text-xs"}
-                    onClick={() => void handleTogglePlan(todo.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleTogglePlan(todo.id);
+                    }}
                     disabled={todo.status !== "pending" || addingToSession || (session ? selected : false)}
                   >
                     {todo.status !== "pending"
@@ -1044,6 +1141,93 @@ export default function TodayPage() {
             )}
 
             {metaNotice ? <p className="app-inline-note">{metaNotice}</p> : null}
+          </aside>
+        </div>
+      ) : null}
+
+      {taskEditorOpen ? (
+        <div className="task-editor-backdrop" onClick={closeTaskEditor} aria-hidden={!taskEditorOpen}>
+          <aside className="task-editor-sheet" onClick={(event) => event.stopPropagation()}>
+            <header className="task-editor-header">
+              <h3 className="page-title text-lg font-bold text-main">编辑任务</h3>
+              <button
+                type="button"
+                className="btn-muted h-8 px-3 text-xs"
+                onClick={closeTaskEditor}
+                disabled={taskEditorSaving || taskEditorDeleting}
+              >
+                关闭
+              </button>
+            </header>
+
+            <p className="task-editor-title">{taskEditorTodoTitle}</p>
+
+            <label className="task-meta-form-item">
+              <span className="task-meta-form-label">分类</span>
+              <input
+                value={taskEditorCategory}
+                onChange={(event) => setTaskEditorCategory(event.target.value)}
+                className="input-base h-10"
+                list="task-editor-category-options"
+                placeholder="默认未分类"
+                disabled={taskEditorSaving || taskEditorDeleting}
+              />
+            </label>
+
+            <label className="task-meta-form-item">
+              <span className="task-meta-form-label">标签</span>
+              <input
+                value={taskEditorTagsText}
+                onChange={(event) => setTaskEditorTagsText(event.target.value)}
+                className="input-base h-10"
+                list="task-editor-tag-options"
+                placeholder="逗号分隔多个标签"
+                disabled={taskEditorSaving || taskEditorDeleting}
+              />
+            </label>
+
+            <label className="task-meta-form-item">
+              <span className="task-meta-form-label">具体内容</span>
+              <textarea
+                value={taskEditorContent}
+                onChange={(event) => setTaskEditorContent(event.target.value)}
+                className="input-base min-h-[6rem] resize-none"
+                placeholder="补充任务细节（可选）"
+                disabled={taskEditorSaving || taskEditorDeleting}
+              />
+            </label>
+
+            <datalist id="task-editor-category-options">
+              {categoryOptions.map((item) => (
+                <option key={item} value={item} />
+              ))}
+            </datalist>
+            <datalist id="task-editor-tag-options">
+              {tagOptions.map((item) => (
+                <option key={item} value={item} />
+              ))}
+            </datalist>
+
+            <div className="task-editor-actions">
+              <button
+                type="button"
+                className="btn-danger h-10 px-4 text-sm"
+                onClick={() => void handleDeleteTaskFromEditor()}
+                disabled={taskEditorSaving || taskEditorDeleting}
+              >
+                {taskEditorDeleting ? "删除中..." : "删除任务"}
+              </button>
+              <button
+                type="button"
+                className="btn-primary h-10 grow text-sm"
+                onClick={() => void handleSaveTaskEditor()}
+                disabled={taskEditorSaving || taskEditorDeleting}
+              >
+                {taskEditorSaving ? "保存中..." : "保存修改"}
+              </button>
+            </div>
+
+            {taskEditorNotice ? <p className="app-inline-note">{taskEditorNotice}</p> : null}
           </aside>
         </div>
       ) : null}

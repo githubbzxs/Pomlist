@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useMemo, useState } from "react";
 import type { TodoItem } from "@/lib/client/types";
@@ -7,6 +7,7 @@ export type CreateTaskInput = {
   title: string;
   category: string;
   tags: string[];
+  content: string;
 };
 
 type TaskPickerDrawerProps = {
@@ -59,6 +60,7 @@ export function TaskPickerDrawer({
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [tagsText, setTagsText] = useState("");
+  const [content, setContent] = useState("");
 
   const pendingTodos = useMemo(() => todos.filter((item) => item.status === "pending"), [todos]);
 
@@ -73,11 +75,13 @@ export function TaskPickerDrawer({
       title: nextTitle,
       category: category.trim() || "未分类",
       tags: parseTagsText(tagsText),
+      content: content.trim(),
     });
 
     setTitle("");
     setCategory("");
     setTagsText("");
+    setContent("");
   }
 
   return (
@@ -120,6 +124,16 @@ export function TaskPickerDrawer({
               />
             </label>
           </div>
+
+          <label className="task-meta-form-item">
+            <span className="task-meta-form-label">具体内容</span>
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              className="input-base min-h-[4.5rem] resize-none"
+              placeholder="补充任务细节（可选）"
+            />
+          </label>
 
           <datalist id="task-category-options">
             {categoryOptions.map((item) => (
