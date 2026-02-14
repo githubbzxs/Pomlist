@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { FeedbackState } from "@/components/feedback-state";
@@ -34,20 +34,19 @@ import type {
 } from "@/lib/client/types";
 
 type LoadMode = "initial" | "refresh";
-type MetaTab = "category" | "tag";
 
 type DisplayTask = {
   id: string;
   title: string;
   completed: boolean;
-  fromSession: boolean;
 };
 
 const DEFAULT_CATEGORY = "未分类";
-const CATEGORY_REGISTRY_KEY = "pomlist.meta.categories";
-const CATEGORY_COLOR_REGISTRY_KEY = "pomlist.meta.category-colors";
+const DEFAULT_PRIMARY_TAG = "未标签";
 const TAG_REGISTRY_KEY = "pomlist.meta.tags";
-const DEFAULT_CATEGORY_COLOR = "#38bdf8";
+const TAG_COLOR_REGISTRY_KEY = "pomlist.meta.tag-colors";
+const COMMON_TAG_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6", "#6366f1", "#ec4899"];
+const DEFAULT_TAG_COLOR = COMMON_TAG_COLORS[0];
 
 const EMPTY_DASHBOARD: DashboardMetrics = {
   date: "",
@@ -100,41 +99,38 @@ function errorToText(error: unknown): string {
   return "请求失败，请稍后重试。";
 }
 
-function readCategory(todo: TodoItem): string {
+function readLegacyCategory(todo: TodoItem): string | null {
   const raw = (todo as TodoItem & { category?: unknown }).category;
-  if (typeof raw === "string" && raw.trim().length > 0) {
-    return raw.trim();
+  if (typeof raw !== "string") {
+    return null;
   }
-  if (todo.subject && todo.subject.trim().length > 0) {
-    return todo.subject.trim();
+  const value = raw.trim();
+  if (!value || value === DEFAULT_CATEGORY) {
+    return null;
   }
-  return DEFAULT_CATEGORY;
+  return value;
 }
 
-function readTags(todo: TodoItem): string[] {
+function normalizeTagLevels(input: string[]): string[] {
+  return mergeUniqueValues(input).slice(0, 2);
+}
+
+function readTagLevels(todo: TodoItem): string[] {
   const raw = (todo as TodoItem & { tags?: unknown }).tags;
-  if (!Array.isArray(raw)) {
-    return [];
+  if (Array.isArray(raw)) {
+    const tags = normalizeTagLevels(raw.filter((item): item is string => typeof item === "string"));
+    if (tags.length > 0) {
+      return tags;
+    }
   }
-  return raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+
+  const fallback = readLegacyCategory(todo);
+  return fallback ? [fallback] : [];
 }
 
 function readContent(todo: TodoItem): string {
   const raw = (todo as TodoItem & { notes?: unknown }).notes;
   return typeof raw === "string" ? raw : "";
-}
-
-function parseDraftTags(input: string): { committed: string[]; draft: string } {
-  const split = input.split(/[锛?\s]+/);
-  const endsWithSeparator = /[锛?\s]$/.test(input);
-  const cleaned = split.map((item) => item.trim()).filter((item) => item.length > 0);
-  if (cleaned.length === 0) {
-    return { committed: [], draft: "" };
-  }
-  if (endsWithSeparator) {
-    return { committed: cleaned, draft: "" };
-  }
-  return { committed: cleaned.slice(0, -1), draft: cleaned[cleaned.length - 1] ?? "" };
 }
 
 function progressPercent(completed: number, total: number): number {
@@ -209,14 +205,14 @@ function parseStoredColorMap(raw: string | null): Record<string, string> {
 }
 
 function hexToRgba(hex: string, alpha: number): string {
-  const normalized = normalizeHexColor(hex) ?? DEFAULT_CATEGORY_COLOR;
+  const normalized = normalizeHexColor(hex) ?? DEFAULT_TAG_COLOR;
   const r = Number.parseInt(normalized.slice(1, 3), 16);
   const g = Number.parseInt(normalized.slice(3, 5), 16);
   const b = Number.parseInt(normalized.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function categoryPillStyle(color: string) {
+function tagPillStyle(color: string) {
   return {
     color,
     borderColor: hexToRgba(color, 0.55),
@@ -244,27 +240,21 @@ export default function TodayPage() {
   const [plannedIds, setPlannedIds] = useState<string[]>([]);
   const [draftChecks, setDraftChecks] = useState<Record<string, boolean>>({});
 
-  const [categoryRegistry, setCategoryRegistry] = useState<string[]>([]);
-  const [categoryColorMap, setCategoryColorMap] = useState<Record<string, string>>({});
   const [tagRegistry, setTagRegistry] = useState<string[]>([]);
+  const [tagColorMap, setTagColorMap] = useState<Record<string, string>>({});
 
   const [metaManagerOpen, setMetaManagerOpen] = useState(false);
-  const [metaTab, setMetaTab] = useState<MetaTab>("category");
   const [metaSaving, setMetaSaving] = useState(false);
   const [metaNotice, setMetaNotice] = useState<string | null>(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryColor, setNewCategoryColor] = useState(DEFAULT_CATEGORY_COLOR);
   const [newTagName, setNewTagName] = useState("");
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [newTagColor, setNewTagColor] = useState(DEFAULT_TAG_COLOR);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingTagName, setEditingTagName] = useState("");
   const [taskEditorOpen, setTaskEditorOpen] = useState(false);
   const [taskEditorTodoId, setTaskEditorTodoId] = useState<string | null>(null);
   const [taskEditorTodoTitle, setTaskEditorTodoTitle] = useState("");
-  const [taskEditorCategory, setTaskEditorCategory] = useState("");
-  const [taskEditorTags, setTaskEditorTags] = useState<string[]>([]);
-  const [taskEditorTagDraft, setTaskEditorTagDraft] = useState("");
+  const [taskEditorPrimaryTag, setTaskEditorPrimaryTag] = useState("");
+  const [taskEditorSecondaryTag, setTaskEditorSecondaryTag] = useState("");
   const [taskEditorContent, setTaskEditorContent] = useState("");
   const [taskEditorSaving, setTaskEditorSaving] = useState(false);
   const [taskEditorDeleting, setTaskEditorDeleting] = useState(false);
@@ -293,24 +283,9 @@ export default function TodayPage() {
     if (typeof window === "undefined") {
       return;
     }
-    setCategoryRegistry(parseStoredMeta(window.localStorage.getItem(CATEGORY_REGISTRY_KEY)));
-    setCategoryColorMap(parseStoredColorMap(window.localStorage.getItem(CATEGORY_COLOR_REGISTRY_KEY)));
     setTagRegistry(parseStoredMeta(window.localStorage.getItem(TAG_REGISTRY_KEY)));
+    setTagColorMap(parseStoredColorMap(window.localStorage.getItem(TAG_COLOR_REGISTRY_KEY)));
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(CATEGORY_REGISTRY_KEY, JSON.stringify(categoryRegistry));
-  }, [categoryRegistry]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(CATEGORY_COLOR_REGISTRY_KEY, JSON.stringify(categoryColorMap));
-  }, [categoryColorMap]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -318,6 +293,13 @@ export default function TodayPage() {
     }
     window.localStorage.setItem(TAG_REGISTRY_KEY, JSON.stringify(tagRegistry));
   }, [tagRegistry]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(TAG_COLOR_REGISTRY_KEY, JSON.stringify(tagColorMap));
+  }, [tagColorMap]);
 
   const displaySeconds = useMemo(() => {
     if (!session) {
@@ -353,7 +335,6 @@ export default function TodayPage() {
         id: task.todoId,
         title: task.title,
         completed: task.completed,
-        fromSession: true,
       }));
     }
 
@@ -361,25 +342,11 @@ export default function TodayPage() {
       id: todo.id,
       title: todo.title,
       completed: Boolean(draftChecks[todo.id]),
-      fromSession: false,
     }));
   }, [session, plannedTodos, draftChecks]);
 
   const completedCount = useMemo(() => centerTasks.filter((task) => task.completed).length, [centerTasks]);
   const totalCount = centerTasks.length;
-
-  const categoryOptions = useMemo(() => {
-    const values = new Set<string>([DEFAULT_CATEGORY]);
-    for (const todo of todos) {
-      if (todo.status !== "archived") {
-        values.add(readCategory(todo));
-      }
-    }
-    for (const category of categoryRegistry) {
-      values.add(category);
-    }
-    return Array.from(values).sort((a, b) => a.localeCompare(b, "zh-CN"));
-  }, [todos, categoryRegistry]);
 
   const tagOptions = useMemo(() => {
     const values = new Set<string>();
@@ -387,7 +354,7 @@ export default function TodayPage() {
       if (todo.status === "archived") {
         continue;
       }
-      for (const tag of readTags(todo)) {
+      for (const tag of readTagLevels(todo)) {
         values.add(tag);
       }
     }
@@ -397,24 +364,19 @@ export default function TodayPage() {
     return Array.from(values).sort((a, b) => a.localeCompare(b, "zh-CN"));
   }, [todos, tagRegistry]);
 
-  const taskEditorCategoryOptions = useMemo(() => {
-    if (!taskEditorCategory) {
-      return categoryOptions;
-    }
-    if (categoryOptions.includes(taskEditorCategory)) {
-      return categoryOptions;
-    }
-    return mergeUniqueValues([taskEditorCategory, ...categoryOptions]);
-  }, [categoryOptions, taskEditorCategory]);
-
-  const taskEditorTagSuggestions = useMemo(
-    () => tagOptions.filter((item) => !taskEditorTags.includes(item)).slice(0, 8),
-    [tagOptions, taskEditorTags],
+  const taskEditorPrimarySuggestions = useMemo(
+    () => tagOptions.filter((item) => item !== taskEditorSecondaryTag).slice(0, 8),
+    [tagOptions, taskEditorSecondaryTag],
   );
 
-  const getCategoryColor = useCallback(
-    (category: string) => normalizeHexColor(categoryColorMap[category]) ?? DEFAULT_CATEGORY_COLOR,
-    [categoryColorMap],
+  const taskEditorSecondarySuggestions = useMemo(
+    () => tagOptions.filter((item) => item !== taskEditorPrimaryTag).slice(0, 8),
+    [tagOptions, taskEditorPrimaryTag],
+  );
+
+  const getTagColor = useCallback(
+    (tag: string) => normalizeHexColor(tagColorMap[tag]) ?? DEFAULT_TAG_COLOR,
+    [tagColorMap],
   );
 
   const libraryTodos = useMemo(() => {
@@ -629,22 +591,24 @@ export default function TodayPage() {
     setCreatingTask(true);
     setError(null);
     try {
+      const nextTags = normalizeTagLevels(input.tags);
       const created = await createTodo({
         title: input.title,
-        category: input.category,
-        tags: input.tags,
+        category: nextTags[0] ?? DEFAULT_CATEGORY,
+        tags: nextTags,
         notes: input.content || null,
       });
 
       setTodos((prev) => [created, ...prev]);
-      setCategoryRegistry((prev) => mergeUniqueValues([...prev, input.category]));
-      setCategoryColorMap((prev) => {
-        if (normalizeHexColor(prev[input.category])) {
-          return prev;
-        }
-        return { ...prev, [input.category]: DEFAULT_CATEGORY_COLOR };
-      });
-      setTagRegistry((prev) => mergeUniqueValues([...prev, ...input.tags]));
+      setTagRegistry((prev) => mergeUniqueValues([...prev, ...nextTags]));
+      if (nextTags[0]) {
+        setTagColorMap((prev) => {
+          if (normalizeHexColor(prev[nextTags[0]!])) {
+            return prev;
+          }
+          return { ...prev, [nextTags[0]!]: DEFAULT_TAG_COLOR };
+        });
+      }
 
       if (session) {
         const updated = await addTasksToSession(session.id, [created.id]);
@@ -661,11 +625,11 @@ export default function TodayPage() {
   }
 
   function openTaskEditor(todo: TodoItem) {
+    const levels = readTagLevels(todo);
     setTaskEditorTodoId(todo.id);
     setTaskEditorTodoTitle(todo.title);
-    setTaskEditorCategory(readCategory(todo));
-    setTaskEditorTags(readTags(todo));
-    setTaskEditorTagDraft("");
+    setTaskEditorPrimaryTag(levels[0] ?? "");
+    setTaskEditorSecondaryTag(levels[1] ?? "");
     setTaskEditorContent(readContent(todo));
     setTaskEditorNotice(null);
     setTaskEditorOpen(true);
@@ -678,55 +642,12 @@ export default function TodayPage() {
     setTaskEditorOpen(false);
   }
 
-  function commitTaskEditorTags(values: string[]) {
-    if (values.length === 0) {
-      return;
-    }
-    setTaskEditorTags((prev) => mergeUniqueValues([...prev, ...values]));
-  }
-
-  function commitTaskEditorTagDraft() {
-    const value = taskEditorTagDraft.trim();
-    if (!value) {
-      return;
-    }
-    commitTaskEditorTags([value]);
-    setTaskEditorTagDraft("");
-  }
-
-  function handleTaskEditorTagInputChange(value: string) {
-    if (!/[锛?\s]/.test(value)) {
-      setTaskEditorTagDraft(value);
-      return;
-    }
-    const parsed = parseDraftTags(value);
-    commitTaskEditorTags(parsed.committed);
-    setTaskEditorTagDraft(parsed.draft);
-  }
-
-  function handleTaskEditorTagInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.nativeEvent.isComposing) {
-      return;
-    }
-    if (event.key === "Backspace" && !taskEditorTagDraft && taskEditorTags.length > 0) {
-      event.preventDefault();
-      setTaskEditorTags((prev) => prev.slice(0, -1));
-      return;
-    }
-    if (event.key === " " || event.key === "Enter" || event.key === "," || event.key === "，") {
-      event.preventDefault();
-      commitTaskEditorTagDraft();
-    }
-  }
-
   async function handleSaveTaskEditor() {
     if (!taskEditorTodoId || taskEditorSaving || taskEditorDeleting) {
       return;
     }
 
-    const nextCategory = taskEditorCategory.trim() || DEFAULT_CATEGORY;
-    const parsedDraft = parseDraftTags(taskEditorTagDraft);
-    const nextTags = mergeUniqueValues([...taskEditorTags, ...parsedDraft.committed, parsedDraft.draft].filter(Boolean));
+    const nextTags = normalizeTagLevels([taskEditorPrimaryTag, taskEditorSecondaryTag]);
     const nextContent = taskEditorContent.trim();
 
     setTaskEditorSaving(true);
@@ -734,21 +655,22 @@ export default function TodayPage() {
     setError(null);
     try {
       const updated = await updateTodo(taskEditorTodoId, {
-        category: nextCategory,
+        category: nextTags[0] ?? DEFAULT_CATEGORY,
         tags: nextTags,
         notes: nextContent || null,
       });
       setTodos((prev) => prev.map((todo) => (todo.id === updated.id ? updated : todo)));
-      setCategoryRegistry((prev) => mergeUniqueValues([...prev, nextCategory]));
-      setCategoryColorMap((prev) => {
-        if (normalizeHexColor(prev[nextCategory])) {
-          return prev;
-        }
-        return { ...prev, [nextCategory]: DEFAULT_CATEGORY_COLOR };
-      });
       setTagRegistry((prev) => mergeUniqueValues([...prev, ...nextTags]));
-      setTaskEditorTags(nextTags);
-      setTaskEditorTagDraft("");
+      if (nextTags[0]) {
+        setTagColorMap((prev) => {
+          if (normalizeHexColor(prev[nextTags[0]!])) {
+            return prev;
+          }
+          return { ...prev, [nextTags[0]!]: DEFAULT_TAG_COLOR };
+        });
+      }
+      setTaskEditorPrimaryTag(nextTags[0] ?? "");
+      setTaskEditorSecondaryTag(nextTags[1] ?? "");
       setTaskEditorNotice("已保存任务信息。");
     } catch (saveError) {
       setTaskEditorNotice(errorToText(saveError));
@@ -776,35 +698,18 @@ export default function TodayPage() {
     }
   }
 
-  function handleUpdateCategoryColor(category: string, color: string) {
+  function handleUpdateTagColor(tag: string, color: string) {
     const normalized = normalizeHexColor(color);
     if (!normalized) {
       return;
     }
-    setCategoryColorMap((prev) => ({ ...prev, [category]: normalized }));
-  }
-
-  function handleAddCategory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const value = newCategoryName.trim();
-    const color = normalizeHexColor(newCategoryColor) ?? DEFAULT_CATEGORY_COLOR;
-    if (!value) {
-      return;
-    }
-    if (categoryOptions.includes(value)) {
-      setMetaNotice("分类已存在。");
-      return;
-    }
-    setCategoryRegistry((prev) => mergeUniqueValues([...prev, value]));
-    setCategoryColorMap((prev) => ({ ...prev, [value]: color }));
-    setNewCategoryName("");
-    setNewCategoryColor(DEFAULT_CATEGORY_COLOR);
-    setMetaNotice("已新增分类。");
+    setTagColorMap((prev) => ({ ...prev, [tag]: normalized }));
   }
 
   function handleAddTag(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = newTagName.trim();
+    const color = normalizeHexColor(newTagColor) ?? DEFAULT_TAG_COLOR;
     if (!value) {
       return;
     }
@@ -813,74 +718,9 @@ export default function TodayPage() {
       return;
     }
     setTagRegistry((prev) => mergeUniqueValues([...prev, value]));
+    setTagColorMap((prev) => ({ ...prev, [value]: color }));
     setNewTagName("");
     setMetaNotice("已新增标签。");
-  }
-
-  async function handleRenameCategory(source: string, target: string) {
-    const nextName = target.trim();
-    if (!nextName) {
-      setMetaNotice("分类不能为空。");
-      return;
-    }
-    if (nextName === source) {
-      setEditingCategory(null);
-      setEditingCategoryName("");
-      return;
-    }
-    if (categoryOptions.includes(nextName)) {
-      setMetaNotice("分类已存在。");
-      return;
-    }
-
-    const ok = await runMetaMutation(async () => {
-      const affected = todos.filter((todo) => readCategory(todo) === source);
-      if (affected.length > 0) {
-        await Promise.all(affected.map((todo) => updateTodo(todo.id, { category: nextName })));
-      }
-      setCategoryRegistry((prev) => mergeUniqueValues([...prev.filter((item) => item !== source), nextName]));
-      setCategoryColorMap((prev) => {
-        const next = { ...prev };
-        const sourceColor = normalizeHexColor(next[source]);
-        delete next[source];
-        next[nextName] = sourceColor ?? DEFAULT_CATEGORY_COLOR;
-        return next;
-      });
-    });
-
-    if (ok) {
-      setEditingCategory(null);
-      setEditingCategoryName("");
-      setMetaNotice(`已将分类“${source}”改为“${nextName}”。`);
-    }
-  }
-
-  async function handleDeleteCategory(category: string) {
-    if (category === DEFAULT_CATEGORY) {
-      setMetaNotice("默认分类不能删除。");
-      return;
-    }
-
-    const ok = await runMetaMutation(async () => {
-      const affected = todos.filter((todo) => readCategory(todo) === category);
-      if (affected.length > 0) {
-        await Promise.all(affected.map((todo) => updateTodo(todo.id, { category: DEFAULT_CATEGORY })));
-      }
-      setCategoryRegistry((prev) => prev.filter((item) => item !== category));
-      setCategoryColorMap((prev) => {
-        const next = { ...prev };
-        delete next[category];
-        return next;
-      });
-    });
-
-    if (ok) {
-      if (editingCategory === category) {
-        setEditingCategory(null);
-        setEditingCategoryName("");
-      }
-      setMetaNotice(`已删除分类“${category}”。`);
-    }
   }
 
   async function handleRenameTag(source: string, target: string) {
@@ -894,20 +734,32 @@ export default function TodayPage() {
       setEditingTagName("");
       return;
     }
+    if (tagOptions.includes(nextName)) {
+      setMetaNotice("标签已存在。");
+      return;
+    }
 
     const ok = await runMetaMutation(async () => {
-      const affected = todos.filter((todo) => readTags(todo).includes(source));
+      const affected = todos.filter((todo) => readTagLevels(todo).includes(source));
       if (affected.length > 0) {
         await Promise.all(
           affected.map(async (todo) => {
-            const nextTags = mergeUniqueValues(
-              readTags(todo).map((tag) => (tag === source ? nextName : tag)),
-            );
-            await updateTodo(todo.id, { tags: nextTags });
+            const nextTags = normalizeTagLevels(readTagLevels(todo).map((tag) => (tag === source ? nextName : tag)));
+            await updateTodo(todo.id, {
+              category: nextTags[0] ?? DEFAULT_CATEGORY,
+              tags: nextTags,
+            });
           }),
         );
       }
       setTagRegistry((prev) => mergeUniqueValues([...prev.filter((item) => item !== source), nextName]));
+      setTagColorMap((prev) => {
+        const next = { ...prev };
+        const sourceColor = normalizeHexColor(next[source]);
+        delete next[source];
+        next[nextName] = sourceColor ?? DEFAULT_TAG_COLOR;
+        return next;
+      });
     });
 
     if (ok) {
@@ -919,16 +771,24 @@ export default function TodayPage() {
 
   async function handleDeleteTag(tag: string) {
     const ok = await runMetaMutation(async () => {
-      const affected = todos.filter((todo) => readTags(todo).includes(tag));
+      const affected = todos.filter((todo) => readTagLevels(todo).includes(tag));
       if (affected.length > 0) {
         await Promise.all(
           affected.map(async (todo) => {
-            const nextTags = readTags(todo).filter((item) => item !== tag);
-            await updateTodo(todo.id, { tags: nextTags });
+            const nextTags = normalizeTagLevels(readTagLevels(todo).filter((item) => item !== tag));
+            await updateTodo(todo.id, {
+              category: nextTags[0] ?? DEFAULT_CATEGORY,
+              tags: nextTags,
+            });
           }),
         );
       }
       setTagRegistry((prev) => prev.filter((item) => item !== tag));
+      setTagColorMap((prev) => {
+        const next = { ...prev };
+        delete next[tag];
+        return next;
+      });
     });
 
     if (ok) {
@@ -1035,7 +895,6 @@ export default function TodayPage() {
             className="btn-muted h-9 px-3 text-xs"
             onClick={() => {
               setMetaManagerOpen(true);
-              setMetaTab("category");
               setMetaNotice(null);
             }}
           >
@@ -1059,9 +918,10 @@ export default function TodayPage() {
           <ul className="library-list">
             {libraryTodos.map((todo) => {
               const selected = plannedIds.includes(todo.id);
-              const category = readCategory(todo);
-              const categoryColor = getCategoryColor(category);
-              const tags = readTags(todo);
+              const tags = readTagLevels(todo);
+              const primaryTag = tags[0];
+              const secondaryTag = tags[1];
+              const primaryColor = primaryTag ? getTagColor(primaryTag) : DEFAULT_TAG_COLOR;
               const content = readContent(todo);
 
               return (
@@ -1075,14 +935,14 @@ export default function TodayPage() {
                       {todo.title}
                     </p>
                     <div className="task-meta-row mt-2">
-                      <span className="task-pill" style={categoryPillStyle(categoryColor)}>
-                        {category}
-                      </span>
-                      {tags.map((tag) => (
-                        <span key={`${todo.id}-${tag}`} className="task-pill task-pill-tag">
-                          #{tag}
+                      {primaryTag ? (
+                        <span className="task-pill" style={tagPillStyle(primaryColor)}>
+                          #{primaryTag}
                         </span>
-                      ))}
+                      ) : (
+                        <span className="task-meta-muted">#{DEFAULT_PRIMARY_TAG}</span>
+                      )}
+                      {secondaryTag ? <span className="task-pill task-pill-tag">#{secondaryTag}</span> : null}
                     </div>
                     {content ? <p className="task-content-preview">{content}</p> : null}
                   </button>
@@ -1123,7 +983,7 @@ export default function TodayPage() {
         >
           <aside className="meta-manager-sheet" onClick={(event) => event.stopPropagation()}>
             <header className="meta-manager-header">
-              <h3 className="page-title text-lg font-bold text-main">管理分类与标签</h3>
+              <h3 className="page-title text-lg font-bold text-main">管理标签</h3>
               <button
                 type="button"
                 className="btn-muted h-8 px-3 text-xs"
@@ -1134,211 +994,111 @@ export default function TodayPage() {
               </button>
             </header>
 
-            <div className="meta-manager-tabs">
-              <button
-                type="button"
-                className={`meta-manager-tab ${metaTab === "category" ? "is-active" : ""}`}
-                onClick={() => {
-                  setMetaTab("category");
-                  setMetaNotice(null);
-                }}
-                disabled={metaSaving}
-              >
-                分类
-              </button>
-              <button
-                type="button"
-                className={`meta-manager-tab ${metaTab === "tag" ? "is-active" : ""}`}
-                onClick={() => {
-                  setMetaTab("tag");
-                  setMetaNotice(null);
-                }}
-                disabled={metaSaving}
-              >
-                标签
-              </button>
-            </div>
+            <div className="meta-manager-body">
+              <form className="meta-manager-create" onSubmit={handleAddTag}>
+                <input
+                  value={newTagName}
+                  onChange={(event) => setNewTagName(event.target.value)}
+                  className="input-base h-10"
+                  disabled={metaSaving}
+                />
+                <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
+                  新增
+                </button>
+              </form>
 
-            {metaTab === "category" ? (
-              <div className="meta-manager-body">
-                <form className="meta-manager-create meta-manager-create-category" onSubmit={handleAddCategory}>
-                  <input
-                    value={newCategoryName}
-                    onChange={(event) => setNewCategoryName(event.target.value)}
-                    className="input-base h-10"
+              <div className="meta-manager-color-palette">
+                {COMMON_TAG_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`meta-color-swatch ${newTagColor === color ? "is-active" : ""}`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => setNewTagColor(color)}
                     disabled={metaSaving}
+                    aria-label={`选择颜色 ${color}`}
                   />
-                  <input
-                    type="color"
-                    value={newCategoryColor}
-                    onChange={(event) => {
-                      const normalized = normalizeHexColor(event.target.value);
-                      if (normalized) {
-                        setNewCategoryColor(normalized);
-                      }
-                    }}
-                    className="meta-manager-color-input"
-                    disabled={metaSaving}
-                    aria-label="选择分类颜色"
-                  />
-                  <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
-                    新增
-                  </button>
-                </form>
-
-                <div className="meta-manager-list">
-                  {categoryOptions.map((category) => {
-                    const categoryColor = getCategoryColor(category);
-                    return (
-                    <article key={category} className="meta-manager-row">
-                      {editingCategory === category ? (
-                        <div className="meta-manager-row-editor">
-                          <input
-                            value={editingCategoryName}
-                            onChange={(event) => setEditingCategoryName(event.target.value)}
-                            className="input-base h-9"
-                            disabled={metaSaving}
-                          />
-                          <button
-                            type="button"
-                            className="btn-primary h-9 px-3 text-xs"
-                            onClick={() => void handleRenameCategory(category, editingCategoryName)}
-                            disabled={metaSaving}
-                          >
-                            保存
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-muted h-9 px-3 text-xs"
-                            onClick={() => {
-                              setEditingCategory(null);
-                              setEditingCategoryName("");
-                            }}
-                            disabled={metaSaving}
-                          >
-                            取消
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="meta-manager-row-main">
-                          <span className="meta-manager-name-wrap">
-                            <span className="meta-manager-swatch" style={{ backgroundColor: categoryColor }} />
-                            <span className="meta-manager-name">{category}</span>
-                          </span>
-                          <div className="meta-manager-row-actions">
-                            <input
-                              type="color"
-                              value={categoryColor}
-                              onChange={(event) => handleUpdateCategoryColor(category, event.target.value)}
-                              className="meta-manager-color-input"
-                              disabled={metaSaving}
-                              aria-label={`Category color ${category}`}
-                            />
-                            <button
-                              type="button"
-                              className="btn-muted h-8 px-3 text-xs"
-                              onClick={() => {
-                                setEditingCategory(category);
-                                setEditingCategoryName(category);
-                                setMetaNotice(null);
-                              }}
-                              disabled={metaSaving}
-                            >
-                              重命名
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-danger h-8 px-3 text-xs"
-                              onClick={() => void handleDeleteCategory(category)}
-                              disabled={metaSaving || category === DEFAULT_CATEGORY}
-                            >
-                              删除
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                    );
-                  })}
-                </div>
+                ))}
               </div>
-            ) : (
-              <div className="meta-manager-body">
-                <form className="meta-manager-create" onSubmit={handleAddTag}>
-                  <input
-                    value={newTagName}
-                    onChange={(event) => setNewTagName(event.target.value)}
-                    className="input-base h-10"
-                    disabled={metaSaving}
-                  />
-                  <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
-                    新增
-                  </button>
-                </form>
 
-                <div className="meta-manager-list">
-                  {tagOptions.map((tag) => (
-                    <article key={tag} className="meta-manager-row">
-                      {editingTag === tag ? (
-                        <div className="meta-manager-row-editor">
-                          <input
-                            value={editingTagName}
-                            onChange={(event) => setEditingTagName(event.target.value)}
-                            className="input-base h-9"
-                            disabled={metaSaving}
-                          />
-                          <button
-                            type="button"
-                            className="btn-primary h-9 px-3 text-xs"
-                            onClick={() => void handleRenameTag(tag, editingTagName)}
-                            disabled={metaSaving}
-                          >
-                            保存
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-muted h-9 px-3 text-xs"
-                            onClick={() => {
-                              setEditingTag(null);
-                              setEditingTagName("");
-                            }}
-                            disabled={metaSaving}
-                          >
-                            取消
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="meta-manager-row-main">
+              <div className="meta-manager-list">
+                {tagOptions.map((tag) => (
+                  <article key={tag} className="meta-manager-row">
+                    {editingTag === tag ? (
+                      <div className="meta-manager-row-editor">
+                        <input
+                          value={editingTagName}
+                          onChange={(event) => setEditingTagName(event.target.value)}
+                          className="input-base h-9"
+                          disabled={metaSaving}
+                        />
+                        <button
+                          type="button"
+                          className="btn-primary h-9 px-3 text-xs"
+                          onClick={() => void handleRenameTag(tag, editingTagName)}
+                          disabled={metaSaving}
+                        >
+                          保存
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-muted h-9 px-3 text-xs"
+                          onClick={() => {
+                            setEditingTag(null);
+                            setEditingTagName("");
+                          }}
+                          disabled={metaSaving}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="meta-manager-row-main">
+                        <span className="meta-manager-name-wrap">
+                          <span className="meta-manager-swatch" style={{ backgroundColor: getTagColor(tag) }} />
                           <span className="meta-manager-name">#{tag}</span>
-                          <div className="meta-manager-row-actions">
-                            <button
-                              type="button"
-                              className="btn-muted h-8 px-3 text-xs"
-                              onClick={() => {
-                                setEditingTag(tag);
-                                setEditingTagName(tag);
-                                setMetaNotice(null);
-                              }}
-                              disabled={metaSaving}
-                            >
-                              重命名
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-danger h-8 px-3 text-xs"
-                              onClick={() => void handleDeleteTag(tag)}
-                              disabled={metaSaving}
-                            >
-                              删除
-                            </button>
+                        </span>
+                        <div className="meta-manager-row-actions">
+                          <div className="meta-manager-color-palette is-inline">
+                            {COMMON_TAG_COLORS.map((color) => (
+                              <button
+                                key={`${tag}-${color}`}
+                                type="button"
+                                className={`meta-color-swatch ${getTagColor(tag) === color ? "is-active" : ""}`}
+                                style={{ backgroundColor: color }}
+                                onClick={() => handleUpdateTagColor(tag, color)}
+                                disabled={metaSaving}
+                                aria-label={`为标签 ${tag} 选择颜色 ${color}`}
+                              />
+                            ))}
                           </div>
+                          <button
+                            type="button"
+                            className="btn-muted h-8 px-3 text-xs"
+                            onClick={() => {
+                              setEditingTag(tag);
+                              setEditingTagName(tag);
+                              setMetaNotice(null);
+                            }}
+                            disabled={metaSaving}
+                          >
+                            重命名
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-danger h-8 px-3 text-xs"
+                            onClick={() => void handleDeleteTag(tag)}
+                            disabled={metaSaving}
+                          >
+                            删除
+                          </button>
                         </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
+                      </div>
+                    )}
+                  </article>
+                ))}
               </div>
-            )}
+            </div>
 
             {metaNotice ? <p className="app-inline-note">{metaNotice}</p> : null}
           </aside>
@@ -1363,55 +1123,46 @@ export default function TodayPage() {
             <p className="task-editor-title">{taskEditorTodoTitle}</p>
 
             <label className="task-meta-form-item">
-              <span className="task-meta-form-label">分类</span>
-              <select
-                value={taskEditorCategory}
-                onChange={(event) => setTaskEditorCategory(event.target.value)}
+              <span className="task-meta-form-label">一级标签</span>
+              <input
+                value={taskEditorPrimaryTag}
+                onChange={(event) => setTaskEditorPrimaryTag(event.target.value)}
                 className="input-base h-10"
                 disabled={taskEditorSaving || taskEditorDeleting}
-              >
-                {taskEditorCategoryOptions.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="task-meta-form-item">
-              <span className="task-meta-form-label">标签</span>
-              <div className="tag-input-shell">
-                {taskEditorTags.map((tag) => (
-                  <span key={tag} className="tag-input-chip">
-                    #{tag}
-                    <button
-                      type="button"
-                      className="tag-input-chip-remove"
-                      onClick={() => setTaskEditorTags((prev) => prev.filter((item) => item !== tag))}
-                      disabled={taskEditorSaving || taskEditorDeleting}
-                      aria-label={`删除标签 ${tag}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={taskEditorTagDraft}
-                  onChange={(event) => handleTaskEditorTagInputChange(event.target.value)}
-                  onKeyDown={handleTaskEditorTagInputKeyDown}
-                  onBlur={commitTaskEditorTagDraft}
-                  className="tag-input-draft"
-                  disabled={taskEditorSaving || taskEditorDeleting}
-                />
-              </div>
-              {taskEditorTagSuggestions.length > 0 ? (
+              />
+              {taskEditorPrimarySuggestions.length > 0 ? (
                 <div className="tag-suggestion-row">
-                  {taskEditorTagSuggestions.map((item) => (
+                  {taskEditorPrimarySuggestions.map((item) => (
                     <button
                       key={item}
                       type="button"
                       className="tag-suggestion-btn"
-                      onClick={() => commitTaskEditorTags([item])}
+                      onClick={() => setTaskEditorPrimaryTag(item)}
+                      disabled={taskEditorSaving || taskEditorDeleting}
+                    >
+                      #{item}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </label>
+
+            <label className="task-meta-form-item">
+              <span className="task-meta-form-label">二级标签</span>
+              <input
+                value={taskEditorSecondaryTag}
+                onChange={(event) => setTaskEditorSecondaryTag(event.target.value)}
+                className="input-base h-10"
+                disabled={taskEditorSaving || taskEditorDeleting}
+              />
+              {taskEditorSecondarySuggestions.length > 0 ? (
+                <div className="tag-suggestion-row">
+                  {taskEditorSecondarySuggestions.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className="tag-suggestion-btn"
+                      onClick={() => setTaskEditorSecondaryTag(item)}
                       disabled={taskEditorSaving || taskEditorDeleting}
                     >
                       #{item}
@@ -1531,7 +1282,7 @@ export default function TodayPage() {
       </section>
 
       <section className="mobile-card">
-        <h3 className="page-title text-lg font-bold text-main">分类贡献</h3>
+        <h3 className="page-title text-lg font-bold text-main">标签贡献（一级）</h3>
         {categoryStats.length === 0 ? null : (
           <div className="mt-3 space-y-3">
             {categoryStats.map((item) => {
@@ -1606,9 +1357,8 @@ export default function TodayPage() {
           open={drawerOpen}
           todos={pendingTodos}
           selectedIds={plannedIds}
-          categoryOptions={categoryOptions}
-          categoryColorMap={categoryColorMap}
           tagOptions={tagOptions}
+          tagColorMap={tagColorMap}
           creating={creatingTask}
           sessionActive={Boolean(session)}
           onClose={() => setDrawerOpen(false)}

@@ -1,4 +1,9 @@
-﻿import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory, normalizeTodoTags } from "@/lib/validation";
+﻿import {
+  DEFAULT_TODO_CATEGORY,
+  mergeTodoTagsWithCategory,
+  normalizeTodoCategory,
+  resolveLegacyCategoryAsPrimaryTag,
+} from "@/lib/validation";
 import type {
   ActiveSession,
   DurationDistributionItem,
@@ -63,7 +68,9 @@ export function mapTodoRow(row: DbTodoRow): Todo {
   const priority = Number.isFinite(row.priority) ? row.priority : 2;
   const safePriority = priority >= 3 ? 3 : priority <= 1 ? 1 : 2;
   const category = normalizeTodoCategory(row.category) ?? DEFAULT_TODO_CATEGORY;
-  const tags = normalizeTodoTags(row.tags) ?? [];
+  const tags = mergeTodoTagsWithCategory(row.tags, row.category) ?? [];
+  const legacyPrimary = resolveLegacyCategoryAsPrimaryTag(row.category);
+  const mappedCategory = tags[0] ?? legacyPrimary ?? category;
 
   return {
     id: row.id,
@@ -71,7 +78,7 @@ export function mapTodoRow(row: DbTodoRow): Todo {
     title: row.title,
     subject: row.subject,
     notes: row.notes,
-    category,
+    category: mappedCategory,
     tags,
     priority: safePriority as 1 | 2 | 3,
     dueAt: row.due_at,
@@ -177,4 +184,3 @@ export function resolveDurationBucketLabel(elapsedSeconds: number): DurationDist
   }
   return "45+ 分钟";
 }
-

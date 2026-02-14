@@ -105,7 +105,7 @@ describe("analytics-service", () => {
     expect(distribution.find((item) => item.bucketLabel === "45+ 分钟")?.sessionCount).toBe(1);
   });
 
-  it("聚合分类和时段", () => {
+  it("聚合一级标签和时段", () => {
     const sessions = [
       sessionRow({ id: "s1", elapsed_seconds: 3600, completed_task_count: 1, total_task_count: 2, ended_at: "2026-02-13T10:10:00.000Z" }),
       sessionRow({ id: "s2", elapsed_seconds: 1800, completed_task_count: 1, total_task_count: 1, ended_at: "2026-02-13T22:10:00.000Z" }),
@@ -118,9 +118,9 @@ describe("analytics-service", () => {
     ];
 
     const todos: DbTodoRow[] = [
-      todoRow({ id: "t1", category: "学习" }),
-      todoRow({ id: "t2", category: "工作" }),
-      todoRow({ id: "t3", category: "学习" }),
+      todoRow({ id: "t1", category: "学习", tags: ["学习", "英语"] }),
+      todoRow({ id: "t2", category: "工作", tags: ["工作"] }),
+      todoRow({ id: "t3", category: "学习", tags: ["学习", "数学"] }),
     ];
 
     const categoryStats = buildCategoryStats(sessions, refs, todos);

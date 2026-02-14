@@ -748,32 +748,32 @@ button {
 .canvas-edge-right {
   top: 50%;
   right: 0.2rem;
-  width: 2.2rem;
-  height: 8.5rem;
+  width: 4.8rem;
+  height: 14rem;
   transform: translateY(-50%);
 }
 
 .canvas-edge-left {
   top: 50%;
   left: 0.2rem;
-  width: 2.2rem;
-  height: 8.5rem;
+  width: 4.8rem;
+  height: 14rem;
   transform: translateY(-50%);
 }
 
 .canvas-edge-top {
   top: 0.2rem;
   left: 50%;
-  width: 8.4rem;
-  height: 2rem;
+  width: 14rem;
+  height: 3.2rem;
   transform: translateX(-50%);
 }
 
 .canvas-edge-bottom {
   left: 50%;
   bottom: 0.2rem;
-  width: 8.4rem;
-  height: 2rem;
+  width: 14rem;
+  height: 3.2rem;
   transform: translateX(-50%);
 }
 
@@ -1016,28 +1016,6 @@ button {
   gap: 0.5rem;
 }
 
-.meta-manager-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-
-.meta-manager-tab {
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 0.75rem;
-  background: rgba(15, 23, 42, 0.64);
-  color: var(--text-subtle);
-  height: 2.2rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.meta-manager-tab.is-active {
-  color: #ffedd5;
-  border-color: rgba(251, 146, 60, 0.56);
-  background: rgba(249, 115, 22, 0.2);
-}
-
 .meta-manager-body {
   display: flex;
   flex-direction: column;
@@ -1051,8 +1029,27 @@ button {
   gap: 0.5rem;
 }
 
-.meta-manager-create-category {
-  grid-template-columns: 1fr 2.4rem auto;
+.meta-manager-color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.meta-manager-color-palette.is-inline {
+  justify-content: flex-end;
+}
+
+.meta-color-swatch {
+  width: 1.42rem;
+  height: 1.42rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.meta-color-swatch.is-active {
+  box-shadow:
+    0 0 0 2px rgba(15, 23, 42, 0.88),
+    0 0 0 3px rgba(125, 211, 252, 0.72);
 }
 
 .meta-manager-list {
@@ -1103,16 +1100,9 @@ button {
 .meta-manager-row-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 0.35rem;
-}
-
-.meta-manager-color-input {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid rgba(148, 163, 184, 0.32);
-  border-radius: 0.55rem;
-  background: rgba(15, 23, 42, 0.82);
-  padding: 0.14rem;
 }
 
 .meta-manager-row-editor {

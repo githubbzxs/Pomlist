@@ -6,12 +6,14 @@ import { errorResponse, parseJsonBody, successResponse } from "@/lib/http";
 import { createServerClient } from "@/lib/supabase/server";
 import { toSupabaseErrorResponse } from "@/lib/supabase-error";
 import {
+  DEFAULT_TODO_CATEGORY,
+  mergeTodoTagsWithCategory,
   normalizeDueAt,
   normalizePriority,
   normalizeText,
   normalizeTitle,
   normalizeTodoCategory,
-  normalizeTodoTags,
+  resolveLegacyCategoryAsPrimaryTag,
 } from "@/lib/validation";
 import type { TodoStatus } from "@/types/domain";
 
@@ -90,20 +92,36 @@ export async function PATCH(request: NextRequest, context: RouteParams) {
     }
   }
 
-  if (parsedBody.data.category !== undefined) {
+  const hasCategory = parsedBody.data.category !== undefined;
+  const hasTags = parsedBody.data.tags !== undefined;
+
+  let normalizedCategory: string | undefined;
+  if (hasCategory) {
     const category = normalizeTodoCategory(parsedBody.data.category);
     if (category === null) {
       return errorResponse("VALIDATION_ERROR", "category 必须是字符串，且长度不超过 32。", 400);
     }
+    normalizedCategory = category;
     updates.category = category;
   }
 
-  if (parsedBody.data.tags !== undefined) {
-    const tags = normalizeTodoTags(parsedBody.data.tags);
+  if (hasTags) {
+    const tags = mergeTodoTagsWithCategory(parsedBody.data.tags, normalizedCategory);
     if (tags === null) {
-      return errorResponse("VALIDATION_ERROR", "tags 最多 10 项，且每项长度不超过 20。", 400);
+      return errorResponse("VALIDATION_ERROR", "tags 最多 2 项，且每项长度不超过 20。", 400);
     }
     updates.tags = tags;
+    updates.category = tags[0] ?? normalizedCategory ?? DEFAULT_TODO_CATEGORY;
+  } else if (hasCategory) {
+    const legacyPrimary = resolveLegacyCategoryAsPrimaryTag(normalizedCategory);
+    if (legacyPrimary) {
+      updates.tags = [legacyPrimary];
+      updates.category = legacyPrimary;
+    }
+    if (normalizedCategory === DEFAULT_TODO_CATEGORY) {
+      updates.tags = [];
+      updates.category = DEFAULT_TODO_CATEGORY;
+    }
   }
 
   if (parsedBody.data.priority !== undefined) {
@@ -203,4 +221,3 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
 
   return successResponse({ deleted: true }, 200);
 }
-

@@ -3,6 +3,7 @@
 import {
   isUuid,
   isValidPasscode,
+  mergeTodoTagsWithCategory,
   normalizeDueAt,
   normalizePriority,
   normalizeText,
@@ -57,8 +58,10 @@ describe("validation", () => {
     expect(normalizeTodoCategory(123)).toBeNull();
 
     expect(normalizeTodoTags(["深度工作", "复盘", "复盘"])).toEqual(["深度工作", "复盘"]);
+    expect(normalizeTodoTags(["深度工作", "复盘", "计划"])).toBeNull();
     expect(normalizeTodoTags(undefined)).toEqual([]);
     expect(normalizeTodoTags(["a".repeat(21)])).toBeNull();
+    expect(mergeTodoTagsWithCategory([], "学习")).toEqual(["学习"]);
   });
 });
 

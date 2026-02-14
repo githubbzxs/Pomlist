@@ -4,8 +4,9 @@ const PASSCODE_LENGTH = 4;
 
 export const DEFAULT_TODO_CATEGORY = "未分类";
 export const TODO_CATEGORY_MAX_LENGTH = 32;
-export const TODO_TAG_MAX_COUNT = 10;
+export const TODO_TAG_MAX_COUNT = 2;
 export const TODO_TAG_MAX_LENGTH = 20;
+export const DEFAULT_TODO_PRIMARY_TAG = "未标签";
 
 export function isUuid(value: string): boolean {
   return UUID_REGEX.test(value);
@@ -133,5 +134,39 @@ export function normalizeTodoTags(input: unknown): string[] | null {
   }
 
   return normalized;
+}
+
+export function resolveLegacyCategoryAsPrimaryTag(input: unknown): string | null {
+  const category = normalizeTodoCategory(input);
+  if (category === null) {
+    return null;
+  }
+  if (category === DEFAULT_TODO_CATEGORY) {
+    return null;
+  }
+  return category;
+}
+
+export function mergeTodoTagsWithCategory(tagsInput: unknown, categoryInput: unknown): string[] | null {
+  const normalizedTags = normalizeTodoTags(tagsInput);
+  if (normalizedTags === null) {
+    return null;
+  }
+  if (normalizedTags.length > 0) {
+    return normalizedTags.slice(0, TODO_TAG_MAX_COUNT);
+  }
+
+  const fallback = resolveLegacyCategoryAsPrimaryTag(categoryInput);
+  return fallback ? [fallback] : [];
+}
+
+export function resolvePrimaryTag(tags: string[], categoryInput?: unknown): string {
+  const primary = tags[0]?.trim();
+  if (primary) {
+    return primary;
+  }
+
+  const fallback = resolveLegacyCategoryAsPrimaryTag(categoryInput);
+  return fallback ?? DEFAULT_TODO_PRIMARY_TAG;
 }
 

@@ -7,7 +7,7 @@
   type DbSessionTaskRefRow,
   type DbTodoRow,
 } from "@/lib/domain-mappers";
-import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory } from "@/lib/validation";
+import { DEFAULT_TODO_PRIMARY_TAG, mergeTodoTagsWithCategory, resolvePrimaryTag } from "@/lib/validation";
 import type {
   CategoryAnalyticsPoint,
   DashboardAnalytics,
@@ -189,8 +189,11 @@ export function buildCategoryStats(
   }
 
   const sessionMap = new Map(rows.map((row) => [row.id, row]));
-  const todoCategoryMap = new Map(
-    todos.map((todo) => [todo.id, normalizeTodoCategory(todo.category) ?? DEFAULT_TODO_CATEGORY]),
+  const todoPrimaryTagMap = new Map(
+    todos.map((todo) => {
+      const tags = mergeTodoTagsWithCategory(todo.tags, todo.category) ?? [];
+      return [todo.id, resolvePrimaryTag(tags, todo.category)];
+    }),
   );
 
   const totalRefCountBySession = new Map<string, number>();
@@ -213,7 +216,7 @@ export function buildCategoryStats(
       continue;
     }
 
-    const category = todoCategoryMap.get(ref.todo_id) ?? DEFAULT_TODO_CATEGORY;
+    const category = todoPrimaryTagMap.get(ref.todo_id) ?? DEFAULT_TODO_PRIMARY_TAG;
     const existing = stats.get(category) ?? {
       taskCount: 0,
       completedCount: 0,
@@ -298,4 +301,3 @@ export function buildEfficiencyMetrics(
     },
   };
 }
-

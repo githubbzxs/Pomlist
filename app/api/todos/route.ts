@@ -6,12 +6,13 @@ import { errorResponse, parseJsonBody, successResponse } from "@/lib/http";
 import { createServerClient } from "@/lib/supabase/server";
 import { toSupabaseErrorResponse } from "@/lib/supabase-error";
 import {
+  DEFAULT_TODO_CATEGORY,
+  mergeTodoTagsWithCategory,
   normalizeDueAt,
   normalizePriority,
   normalizeText,
   normalizeTitle,
   normalizeTodoCategory,
-  normalizeTodoTags,
 } from "@/lib/validation";
 import type { TodoStatus } from "@/types/domain";
 
@@ -80,10 +81,11 @@ export async function POST(request: NextRequest) {
     return errorResponse("VALIDATION_ERROR", "category 必须是字符串，且长度不超过 32。", 400);
   }
 
-  const tags = normalizeTodoTags(parsedBody.data.tags);
+  const tags = mergeTodoTagsWithCategory(parsedBody.data.tags, category);
   if (tags === null) {
-    return errorResponse("VALIDATION_ERROR", "tags 最多 10 项，且每项长度不超过 20。", 400);
+    return errorResponse("VALIDATION_ERROR", "tags 最多 2 项，且每项长度不超过 20。", 400);
   }
+  const storedCategory = tags[0] ?? category ?? DEFAULT_TODO_CATEGORY;
 
   const priority = normalizePriority(parsedBody.data.priority) ?? 2;
   const dueAt = normalizeDueAt(parsedBody.data.dueAt);
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
       title,
       subject,
       notes,
-      category,
+      category: storedCategory,
       tags,
       priority,
       due_at: dueAt,
@@ -120,4 +122,3 @@ export async function POST(request: NextRequest) {
 
   return successResponse(mapTodoRow(row), 201);
 }
-

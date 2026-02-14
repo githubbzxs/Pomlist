@@ -1,15 +1,14 @@
 ﻿"use client";
 
-import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TodoItem } from "@/lib/client/types";
 
+const DEFAULT_TAG_COLOR = "#38bdf8";
 const DEFAULT_CATEGORY = "未分类";
-const DEFAULT_CATEGORY_COLOR = "#38bdf8";
 
 export type CreateTaskInput = {
   title: string;
-  category: string;
   tags: string[];
   content: string;
 };
@@ -18,28 +17,14 @@ type TaskPickerDrawerProps = {
   open: boolean;
   todos: TodoItem[];
   selectedIds: string[];
-  categoryOptions: string[];
-  categoryColorMap: Record<string, string>;
   tagOptions: string[];
+  tagColorMap: Record<string, string>;
   creating: boolean;
   sessionActive: boolean;
   onClose: () => void;
   onToggleTodo: (todoId: string) => Promise<void> | void;
   onCreateTodo: (input: CreateTaskInput) => Promise<void> | void;
 };
-
-function readCategory(todo: TodoItem): string {
-  const raw = (todo as TodoItem & { category?: unknown }).category;
-  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : DEFAULT_CATEGORY;
-}
-
-function readTags(todo: TodoItem): string[] {
-  const raw = (todo as TodoItem & { tags?: unknown }).tags;
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-  return raw.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-}
 
 function mergeUniqueValues(input: string[]): string[] {
   const seen = new Set<string>();
@@ -51,21 +36,11 @@ function mergeUniqueValues(input: string[]): string[] {
     }
     seen.add(value);
     result.push(value);
+    if (result.length >= 2) {
+      break;
+    }
   }
   return result;
-}
-
-function parseDraftTags(input: string): { committed: string[]; draft: string } {
-  const split = input.split(/[，,\s]+/);
-  const endsWithSeparator = /[，,\s]$/.test(input);
-  const cleaned = split.map((item) => item.trim()).filter((item) => item.length > 0);
-  if (cleaned.length === 0) {
-    return { committed: [], draft: "" };
-  }
-  if (endsWithSeparator) {
-    return { committed: cleaned, draft: "" };
-  }
-  return { committed: cleaned.slice(0, -1), draft: cleaned[cleaned.length - 1] ?? "" };
 }
 
 function normalizeHexColor(input: unknown): string | null {
@@ -80,14 +55,14 @@ function normalizeHexColor(input: unknown): string | null {
 }
 
 function hexToRgba(hex: string, alpha: number): string {
-  const normalized = normalizeHexColor(hex) ?? DEFAULT_CATEGORY_COLOR;
+  const normalized = normalizeHexColor(hex) ?? DEFAULT_TAG_COLOR;
   const r = Number.parseInt(normalized.slice(1, 3), 16);
   const g = Number.parseInt(normalized.slice(3, 5), 16);
   const b = Number.parseInt(normalized.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function categoryPillStyle(color: string): CSSProperties {
+function primaryTagPillStyle(color: string): CSSProperties {
   return {
     color,
     borderColor: hexToRgba(color, 0.55),
@@ -95,84 +70,57 @@ function categoryPillStyle(color: string): CSSProperties {
   };
 }
 
+function readLegacyCategory(todo: TodoItem): string | null {
+  const raw = (todo as TodoItem & { category?: unknown }).category;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const value = raw.trim();
+  if (!value || value === DEFAULT_CATEGORY) {
+    return null;
+  }
+  return value;
+}
+
+function readTagLevels(todo: TodoItem): string[] {
+  const raw = (todo as TodoItem & { tags?: unknown }).tags;
+  if (Array.isArray(raw)) {
+    const normalized = mergeUniqueValues(raw.filter((item): item is string => typeof item === "string"));
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+
+  const fallback = readLegacyCategory(todo);
+  return fallback ? [fallback] : [];
+}
+
 export function TaskPickerDrawer({
   open,
   todos,
   selectedIds,
-  categoryOptions,
-  categoryColorMap,
   tagOptions,
+  tagColorMap,
   creating,
   sessionActive,
   onClose,
   onToggleTodo,
   onCreateTodo,
 }: TaskPickerDrawerProps) {
-  const normalizedCategoryOptions = useMemo(() => {
-    if (categoryOptions.length === 0) {
-      return [DEFAULT_CATEGORY];
-    }
-    if (categoryOptions.includes(DEFAULT_CATEGORY)) {
-      return categoryOptions;
-    }
-    return [DEFAULT_CATEGORY, ...categoryOptions];
-  }, [categoryOptions]);
-
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState(DEFAULT_CATEGORY);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagDraft, setTagDraft] = useState("");
+  const [primaryTag, setPrimaryTag] = useState("");
+  const [secondaryTag, setSecondaryTag] = useState("");
   const [content, setContent] = useState("");
 
   const pendingTodos = useMemo(() => todos.filter((item) => item.status === "pending"), [todos]);
-  const tagSuggestions = useMemo(
-    () => tagOptions.filter((item) => !tags.includes(item)).slice(0, 8),
-    [tagOptions, tags],
+  const primarySuggestions = useMemo(
+    () => tagOptions.filter((item) => item !== secondaryTag).slice(0, 8),
+    [tagOptions, secondaryTag],
   );
-  const selectedCategory = normalizedCategoryOptions.includes(category)
-    ? category
-    : (normalizedCategoryOptions[0] ?? DEFAULT_CATEGORY);
-
-  function commitTags(values: string[]) {
-    if (values.length === 0) {
-      return;
-    }
-    setTags((prev) => mergeUniqueValues([...prev, ...values]));
-  }
-
-  function commitTagDraft() {
-    const value = tagDraft.trim();
-    if (!value) {
-      return;
-    }
-    commitTags([value]);
-    setTagDraft("");
-  }
-
-  function handleTagInputChange(value: string) {
-    if (!/[，,\s]/.test(value)) {
-      setTagDraft(value);
-      return;
-    }
-    const parsed = parseDraftTags(value);
-    commitTags(parsed.committed);
-    setTagDraft(parsed.draft);
-  }
-
-  function handleTagInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.nativeEvent.isComposing) {
-      return;
-    }
-    if (event.key === "Backspace" && !tagDraft && tags.length > 0) {
-      event.preventDefault();
-      setTags((prev) => prev.slice(0, -1));
-      return;
-    }
-    if (event.key === " " || event.key === "Enter" || event.key === "," || event.key === "，") {
-      event.preventDefault();
-      commitTagDraft();
-    }
-  }
+  const secondarySuggestions = useMemo(
+    () => tagOptions.filter((item) => item !== primaryTag).slice(0, 8),
+    [tagOptions, primaryTag],
+  );
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -180,21 +128,18 @@ export function TaskPickerDrawer({
     if (!nextTitle) {
       return;
     }
-    const parsed = parseDraftTags(tagDraft);
-    const nextTags = mergeUniqueValues([...tags, ...parsed.committed, parsed.draft].filter((item) => item));
-    const nextCategory = selectedCategory.trim() || DEFAULT_CATEGORY;
+
+    const tags = mergeUniqueValues([primaryTag, secondaryTag]);
 
     await onCreateTodo({
       title: nextTitle,
-      category: nextCategory,
-      tags: nextTags,
+      tags,
       content: content.trim(),
     });
 
     setTitle("");
-    setCategory(normalizedCategoryOptions[0] ?? DEFAULT_CATEGORY);
-    setTags([]);
-    setTagDraft("");
+    setPrimaryTag("");
+    setSecondaryTag("");
     setContent("");
   }
 
@@ -213,51 +158,45 @@ export function TaskPickerDrawer({
 
           <div className="task-meta-form-grid">
             <label className="task-meta-form-item">
-              <span className="task-meta-form-label">分类</span>
-              <select
-                value={selectedCategory}
-                onChange={(event) => setCategory(event.target.value)}
+              <span className="task-meta-form-label">一级标签</span>
+              <input
+                value={primaryTag}
+                onChange={(event) => setPrimaryTag(event.target.value)}
                 className="input-base h-10"
-              >
-                {normalizedCategoryOptions.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="task-meta-form-item">
-              <span className="task-meta-form-label">标签</span>
-              <div className="tag-input-shell">
-                {tags.map((tag) => (
-                  <span key={tag} className="tag-input-chip">
-                    #{tag}
-                    <button
-                      type="button"
-                      className="tag-input-chip-remove"
-                      onClick={() => setTags((prev) => prev.filter((item) => item !== tag))}
-                      aria-label={`删除标签 ${tag}`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                <input
-                  value={tagDraft}
-                  onChange={(event) => handleTagInputChange(event.target.value)}
-                  onKeyDown={handleTagInputKeyDown}
-                  onBlur={commitTagDraft}
-                  className="tag-input-draft"
-                />
-              </div>
-              {tagSuggestions.length > 0 ? (
+                placeholder="例如：工作"
+              />
+              {primarySuggestions.length > 0 ? (
                 <div className="tag-suggestion-row">
-                  {tagSuggestions.map((item) => (
+                  {primarySuggestions.map((item) => (
                     <button
                       key={item}
                       type="button"
                       className="tag-suggestion-btn"
-                      onClick={() => commitTags([item])}
+                      onClick={() => setPrimaryTag(item)}
+                    >
+                      #{item}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </label>
+
+            <label className="task-meta-form-item">
+              <span className="task-meta-form-label">二级标签</span>
+              <input
+                value={secondaryTag}
+                onChange={(event) => setSecondaryTag(event.target.value)}
+                className="input-base h-10"
+                placeholder="例如：会议"
+              />
+              {secondarySuggestions.length > 0 ? (
+                <div className="tag-suggestion-row">
+                  {secondarySuggestions.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className="tag-suggestion-btn"
+                      onClick={() => setSecondaryTag(item)}
                     >
                       #{item}
                     </button>
@@ -292,9 +231,10 @@ export function TaskPickerDrawer({
             <div className="md-task-list">
               {pendingTodos.map((todo) => {
                 const selected = selectedIds.includes(todo.id);
-                const categoryText = readCategory(todo);
-                const tagsInTodo = readTags(todo);
-                const categoryColor = normalizeHexColor(categoryColorMap[categoryText]) ?? DEFAULT_CATEGORY_COLOR;
+                const tagLevels = readTagLevels(todo);
+                const primary = tagLevels[0];
+                const secondary = tagLevels[1];
+                const primaryColor = normalizeHexColor(primary ? tagColorMap[primary] : undefined) ?? DEFAULT_TAG_COLOR;
 
                 return (
                   <button
@@ -308,14 +248,14 @@ export function TaskPickerDrawer({
                     <span className="md-task-content">
                       <span className="md-task-text">{todo.title}</span>
                       <span className="task-meta-row">
-                        <span className="task-pill" style={categoryPillStyle(categoryColor)}>
-                          {categoryText}
-                        </span>
-                        {tagsInTodo.map((tag) => (
-                          <span key={`${todo.id}-${tag}`} className="task-pill task-pill-tag">
-                            #{tag}
+                        {primary ? (
+                          <span className="task-pill" style={primaryTagPillStyle(primaryColor)}>
+                            #{primary}
                           </span>
-                        ))}
+                        ) : (
+                          <span className="task-meta-muted">未设置标签</span>
+                        )}
+                        {secondary ? <span className="task-pill task-pill-tag">#{secondary}</span> : null}
                       </span>
                     </span>
                   </button>

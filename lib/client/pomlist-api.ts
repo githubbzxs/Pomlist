@@ -8,7 +8,12 @@ import type {
   TodoItem,
   TrendPoint,
 } from "@/lib/client/types";
-import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory, normalizeTodoTags } from "@/lib/validation";
+import {
+  DEFAULT_TODO_CATEGORY,
+  mergeTodoTagsWithCategory,
+  normalizeTodoCategory,
+  resolveLegacyCategoryAsPrimaryTag,
+} from "@/lib/validation";
 
 interface AuthPayload {
   user: { id: string; email: string | null } | null;
@@ -42,14 +47,20 @@ interface ActiveSessionPayload {
 
 function normalizeTodo(item: TodoItem): TodoItem {
   const category = normalizeTodoCategory((item as TodoItem & { category?: unknown }).category) ?? DEFAULT_TODO_CATEGORY;
-  const tags = normalizeTodoTags((item as TodoItem & { tags?: unknown }).tags) ?? [];
+  const tags =
+    mergeTodoTagsWithCategory(
+      (item as TodoItem & { tags?: unknown }).tags,
+      (item as TodoItem & { category?: unknown }).category,
+    ) ?? [];
+  const legacyPrimary = resolveLegacyCategoryAsPrimaryTag((item as TodoItem & { category?: unknown }).category);
+  const mappedCategory = tags[0] ?? legacyPrimary ?? category;
 
   return {
     id: item.id,
     title: item.title,
     subject: item.subject ?? null,
     notes: item.notes ?? null,
-    category,
+    category: mappedCategory,
     tags,
     priority: item.priority,
     dueAt: item.dueAt ?? null,
@@ -209,4 +220,3 @@ export async function getTrendData(days = 7): Promise<TrendPoint[]> {
 export async function getDistributionData(days = 30): Promise<DistributionBucket[]> {
   return apiRequest<DistributionBucket[]>(`/api/analytics/distribution?days=${days}`);
 }
-

@@ -3,7 +3,12 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import type { DbFocusSessionRow, DbSessionTaskRefRow, DbTodoRow } from "@/lib/domain-mappers";
-import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory, normalizeTodoTags } from "@/lib/validation";
+import {
+  DEFAULT_TODO_CATEGORY,
+  mergeTodoTagsWithCategory,
+  normalizeTodoCategory,
+  resolveLegacyCategoryAsPrimaryTag,
+} from "@/lib/validation";
 
 export interface SupabaseErrorPayload {
   code?: string;
@@ -184,7 +189,9 @@ function normalizeTodoRow(value: unknown): DbTodoRow | null {
   const createdAt = typeof value.created_at === "string" ? value.created_at : nowIso();
   const updatedAt = typeof value.updated_at === "string" ? value.updated_at : createdAt;
   const category = normalizeTodoCategory(value.category) ?? DEFAULT_TODO_CATEGORY;
-  const tags = normalizeTodoTags(value.tags) ?? [];
+  const tags = mergeTodoTagsWithCategory(value.tags, value.category) ?? [];
+  const legacyPrimary = resolveLegacyCategoryAsPrimaryTag(value.category);
+  const storedCategory = tags[0] ?? legacyPrimary ?? category;
 
   return {
     id,
@@ -192,7 +199,7 @@ function normalizeTodoRow(value: unknown): DbTodoRow | null {
     title: typeof value.title === "string" ? value.title : "",
     subject: toNullableString(value.subject),
     notes: toNullableString(value.notes),
-    category,
+    category: storedCategory,
     tags,
     priority: Math.max(1, Math.min(3, Math.round(toFiniteNumber(value.priority, 2)))) as 1 | 2 | 3,
     due_at: toNullableString(value.due_at),
@@ -676,7 +683,14 @@ function normalizeTodoPatch(updates: Record<string, unknown>): Record<string, un
   }
 
   if (Object.prototype.hasOwnProperty.call(normalized, "tags")) {
-    normalized.tags = normalizeTodoTags(normalized.tags) ?? [];
+    const mergedTags = mergeTodoTagsWithCategory(normalized.tags, normalized.category);
+    const nextTags = mergedTags ?? [];
+    normalized.tags = nextTags;
+    normalized.category = nextTags[0] ?? normalized.category ?? DEFAULT_TODO_CATEGORY;
+  } else if (Object.prototype.hasOwnProperty.call(normalized, "category")) {
+    const fallbackPrimary = resolveLegacyCategoryAsPrimaryTag(normalized.category);
+    normalized.tags = fallbackPrimary ? [fallbackPrimary] : [];
+    normalized.category = fallbackPrimary ?? DEFAULT_TODO_CATEGORY;
   }
 
   return normalized;
@@ -708,7 +722,8 @@ function buildTodoRow(userId: string, payload: Record<string, unknown>, timestam
   const status = isTodoStatus(payload.status) ? payload.status : "pending";
   const completedAt = toNullableString(payload.completed_at);
   const category = normalizeTodoCategory(payload.category) ?? DEFAULT_TODO_CATEGORY;
-  const tags = normalizeTodoTags(payload.tags) ?? [];
+  const tags = mergeTodoTagsWithCategory(payload.tags, payload.category) ?? [];
+  const storedCategory = tags[0] ?? category;
 
   return {
     id: randomUUID(),
@@ -716,7 +731,7 @@ function buildTodoRow(userId: string, payload: Record<string, unknown>, timestam
     title: typeof payload.title === "string" ? payload.title : "",
     subject: toNullableString(payload.subject),
     notes: toNullableString(payload.notes),
-    category,
+    category: storedCategory,
     tags,
     priority: priority as 1 | 2 | 3,
     due_at: dueAt,
