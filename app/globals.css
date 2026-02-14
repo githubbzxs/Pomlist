@@ -706,6 +706,82 @@ button {
   padding: 0.24rem 0.74rem;
 }
 
+.canvas-edge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.canvas-edge {
+  position: absolute;
+  border: none;
+  background: transparent;
+  padding: 0;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-edge > span {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.64);
+  color: var(--text-subtle);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  padding: 0.28rem 0.56rem;
+  backdrop-filter: blur(8px);
+}
+
+.canvas-edge:hover > span {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(249, 115, 22, 0.2);
+  color: #ffedd5;
+}
+
+.canvas-edge:focus-visible {
+  outline: none;
+}
+
+.canvas-edge:focus-visible > span {
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.28);
+  border-color: rgba(125, 211, 252, 0.78);
+}
+
+.canvas-edge-right {
+  top: 50%;
+  right: 0.2rem;
+  width: 2.2rem;
+  height: 8.5rem;
+  transform: translateY(-50%);
+}
+
+.canvas-edge-left {
+  top: 50%;
+  left: 0.2rem;
+  width: 2.2rem;
+  height: 8.5rem;
+  transform: translateY(-50%);
+}
+
+.canvas-edge-top {
+  top: 0.2rem;
+  left: 50%;
+  width: 8.4rem;
+  height: 2rem;
+  transform: translateX(-50%);
+}
+
+.canvas-edge-bottom {
+  left: 50%;
+  bottom: 0.2rem;
+  width: 8.4rem;
+  height: 2rem;
+  transform: translateX(-50%);
+}
+
 .task-picker-backdrop {
   position: absolute;
   inset: 0;
@@ -899,6 +975,8 @@ button {
 
 @media (max-width: 420px) {
   .mobile-page {
+    min-height: 100dvh;
+    height: 100dvh;
     padding:
       env(safe-area-inset-top, 0px)
       0
@@ -907,7 +985,8 @@ button {
 
   .mobile-phone-frame {
     width: 100%;
-    height: 100%;
+    min-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     border-radius: 0;
     border: none;
     box-shadow: none;

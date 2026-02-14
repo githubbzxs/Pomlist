@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, TouchEvent } from "react";
 
 export type CanvasPanel = "center" | "right" | "down";
@@ -14,6 +14,14 @@ type AppCanvasProps = {
 };
 
 type SwipeDirection = "left" | "right" | "up" | "down";
+
+type EdgeAction = {
+  key: string;
+  className: string;
+  label: string;
+  next: CanvasPanel;
+  ariaLabel: string;
+};
 
 const SWIPE_THRESHOLD = 56;
 
@@ -45,13 +53,72 @@ function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): C
 }
 
 export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanvasProps) {
+  const [desktopEdgeNavEnabled, setDesktopEdgeNavEnabled] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const media = window.matchMedia("(hover: hover) and (pointer: fine) and (min-width: 768px)");
+    const sync = () => setDesktopEdgeNavEnabled(media.matches);
+    sync();
+
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+    };
+  }, []);
 
   const trackStyle = useMemo(() => {
     const offset = PANEL_OFFSET[panel];
     return {
       transform: `translate3d(${offset.x * -100}%, ${offset.y * -100}%, 0)`,
     };
+  }, [panel]);
+
+  const edgeActions = useMemo<EdgeAction[]>(() => {
+    if (panel === "center") {
+      return [
+        {
+          key: "go-right",
+          className: "canvas-edge canvas-edge-right",
+          label: "任务",
+          next: "right",
+          ariaLabel: "切换到任务页面",
+        },
+        {
+          key: "go-down",
+          className: "canvas-edge canvas-edge-bottom",
+          label: "统计",
+          next: "down",
+          ariaLabel: "切换到统计页面",
+        },
+      ];
+    }
+
+    if (panel === "right") {
+      return [
+        {
+          key: "back-left",
+          className: "canvas-edge canvas-edge-left",
+          label: "返回",
+          next: "center",
+          ariaLabel: "返回专注页面",
+        },
+      ];
+    }
+
+    return [
+      {
+        key: "back-top",
+        className: "canvas-edge canvas-edge-top",
+        label: "返回",
+        next: "center",
+        ariaLabel: "返回专注页面",
+      },
+    ];
   }, [panel]);
 
   function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
@@ -103,12 +170,27 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
         </div>
       </div>
 
-      {panel === "center" ? null : (
+      {desktopEdgeNavEnabled ? (
+        <div className="canvas-edge-layer">
+          {edgeActions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              className={action.className}
+              onClick={() => onPanelChange(action.next)}
+              aria-label={action.ariaLabel}
+            >
+              <span>{action.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {!desktopEdgeNavEnabled && panel !== "center" ? (
         <button type="button" className="canvas-center-button" onClick={() => onPanelChange("center")}>
           返回专注
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
-
