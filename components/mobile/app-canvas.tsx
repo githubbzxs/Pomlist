@@ -18,7 +18,6 @@ type SwipeDirection = "left" | "right" | "up" | "down";
 type EdgeAction = {
   key: string;
   className: string;
-  label: string;
   next: CanvasPanel;
   ariaLabel: string;
 };
@@ -84,14 +83,12 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
         {
           key: "go-right",
           className: "canvas-edge canvas-edge-right",
-          label: "任务",
           next: "right",
           ariaLabel: "切换到任务页面",
         },
         {
           key: "go-down",
           className: "canvas-edge canvas-edge-bottom",
-          label: "统计",
           next: "down",
           ariaLabel: "切换到统计页面",
         },
@@ -103,7 +100,6 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
         {
           key: "back-left",
           className: "canvas-edge canvas-edge-left",
-          label: "返回",
           next: "center",
           ariaLabel: "返回专注页面",
         },
@@ -114,7 +110,6 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
       {
         key: "back-top",
         className: "canvas-edge canvas-edge-top",
-        label: "返回",
         next: "center",
         ariaLabel: "返回专注页面",
       },
@@ -179,17 +174,9 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
               className={action.className}
               onClick={() => onPanelChange(action.next)}
               aria-label={action.ariaLabel}
-            >
-              <span>{action.label}</span>
-            </button>
+            />
           ))}
         </div>
-      ) : null}
-
-      {!desktopEdgeNavEnabled && panel !== "center" ? (
-        <button type="button" className="canvas-center-button" onClick={() => onPanelChange("center")}>
-          返回专注
-        </button>
       ) : null}
     </div>
   );
