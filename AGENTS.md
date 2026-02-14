@@ -105,3 +105,39 @@
   - Why：用户反馈“点击一瞬间切换太快”，需要更有缓冲感。
   - Impact：`app/globals.css` 增加 `passcode-press-buffer` 关键帧并上调全局时长变量；`app/auth/page.tsx` 错误态计时同步为 900ms。
   - Verify：本地 `npm run lint && npm run typecheck && npm run build` 通过。
+
+## Decisions（增量）
+
+- **[2026-02-14] 交互架构重构**：主应用改为“单画布四向面板”（中心番茄钟、左设置、右任务库、下统计）。
+  - Why：统一移动端 App 心智，网页仅做手机画布放大。
+  - Impact：`app/today/page.tsx`、`components/mobile/*`、`app/globals.css`、`components/app-shell.tsx` 全面改造。
+  - Verify：手势与边缘入口可在四个面板间切换，中心页默认进入。
+
+- **[2026-02-14] 任务模型升级**：Todo 新增 `category` 与 `tags`，并贯穿 API/本地存储/客户端类型。
+  - Why：满足“基础分类 + 可选标签”与统计聚合需求。
+  - Impact：`types/domain.ts`、`lib/client/types.ts`、`lib/domain-mappers.ts`、`lib/supabase/shared.ts`、`app/api/todos/*`。
+  - Verify：创建/更新任务可写入分类与标签，列表与筛选正常。
+
+- **[2026-02-14] 会话能力增强**：新增会话中增量加任务接口。
+  - Why：支持在番茄钟进行中继续从任务库补充任务。
+  - Impact：新增 `app/api/sessions/[id]/tasks/route.ts`，前端通过 `addTasksToSession` 调用。
+  - Verify：专注进行中新增任务后，中心清单与 `n/x` 进度立即更新。
+
+- **[2026-02-14] 设置页落地**：新增口令修改 API，并在左侧设置页接入“改口令 + 退出登录”。
+  - Why：符合单用户 VPS 场景下的最小可用设置能力。
+  - Impact：新增 `app/api/auth/passcode/route.ts`，`lib/supabase/shared.ts` 增加本地口令更新逻辑。
+  - Verify：旧口令校验、新口令生效，退出后需重新登录。
+
+- **[2026-02-14] 统计看板增强**：dashboard 返回周期、分类、时段、效率等多维数据。
+  - Why：满足“时间维度 + 个数统计 + 更高视角”的分析目标。
+  - Impact：`lib/analytics-service.ts`、`app/api/analytics/dashboard/route.ts`、`app/today/page.tsx`。
+  - Verify：统计页可见今日/7天/30天、分类贡献、24小时分布、效率与周期对比。
+
+## Commands（增量）
+
+- **[2026-02-14] 全量校验**：`npm run lint && npm run test && npm run typecheck && npm run build`
+
+## Status / Next（增量）
+
+- **[2026-02-14] 当前状态**：四向移动画布重构已完成，新增接口与统计维度已接通并通过本地全量校验。
+- **[2026-02-14] 下一步**：部署到 VPS 后做真机/PWA 手势体验验收（重点检查滑动阈值与统计刷新链路）。

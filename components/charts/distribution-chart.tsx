@@ -1,4 +1,4 @@
-import type { DistributionBucket } from "@/lib/client/types";
+﻿import type { DistributionBucket } from "@/lib/client/types";
 
 function toMinutes(seconds: number): number {
   return Math.round(seconds / 60);

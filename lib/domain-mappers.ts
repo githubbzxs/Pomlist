@@ -1,3 +1,4 @@
+﻿import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory, normalizeTodoTags } from "@/lib/validation";
 import type {
   ActiveSession,
   DurationDistributionItem,
@@ -14,6 +15,8 @@ export interface DbTodoRow {
   title: string;
   subject: string | null;
   notes: string | null;
+  category: string;
+  tags: string[];
   priority: number;
   due_at: string | null;
   status: TodoStatus;
@@ -59,6 +62,8 @@ export function completionRate(completedTaskCount: number, totalTaskCount: numbe
 export function mapTodoRow(row: DbTodoRow): Todo {
   const priority = Number.isFinite(row.priority) ? row.priority : 2;
   const safePriority = priority >= 3 ? 3 : priority <= 1 ? 1 : 2;
+  const category = normalizeTodoCategory(row.category) ?? DEFAULT_TODO_CATEGORY;
+  const tags = normalizeTodoTags(row.tags) ?? [];
 
   return {
     id: row.id,
@@ -66,6 +71,8 @@ export function mapTodoRow(row: DbTodoRow): Todo {
     title: row.title,
     subject: row.subject,
     notes: row.notes,
+    category,
+    tags,
     priority: safePriority as 1 | 2 | 3,
     dueAt: row.due_at,
     status: row.status,

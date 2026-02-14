@@ -1,4 +1,5 @@
 ﻿import { describe, expect, it } from "vitest";
+
 import {
   isUuid,
   isValidPasscode,
@@ -6,6 +7,8 @@ import {
   normalizePriority,
   normalizeText,
   normalizeTitle,
+  normalizeTodoCategory,
+  normalizeTodoTags,
   uniqueIds,
 } from "../lib/validation";
 
@@ -47,4 +50,15 @@ describe("validation", () => {
     expect(isValidPasscode("123")).toBe(false);
     expect(isValidPasscode("12345")).toBe(false);
   });
+
+  it("分类与标签规范化", () => {
+    expect(normalizeTodoCategory(undefined)).toBe("未分类");
+    expect(normalizeTodoCategory("学习")).toBe("学习");
+    expect(normalizeTodoCategory(123)).toBeNull();
+
+    expect(normalizeTodoTags(["深度工作", "复盘", "复盘"])).toEqual(["深度工作", "复盘"]);
+    expect(normalizeTodoTags(undefined)).toEqual([]);
+    expect(normalizeTodoTags(["a".repeat(21)])).toBeNull();
+  });
 });
+

@@ -1,11 +1,18 @@
-import type { NextRequest } from "next/server";
+﻿import type { NextRequest } from "next/server";
 
 import { requireAuth } from "@/lib/auth";
 import { type DbTodoRow, mapTodoRow } from "@/lib/domain-mappers";
 import { errorResponse, parseJsonBody, successResponse } from "@/lib/http";
 import { createServerClient } from "@/lib/supabase/server";
 import { toSupabaseErrorResponse } from "@/lib/supabase-error";
-import { normalizeDueAt, normalizePriority, normalizeText, normalizeTitle } from "@/lib/validation";
+import {
+  normalizeDueAt,
+  normalizePriority,
+  normalizeText,
+  normalizeTitle,
+  normalizeTodoCategory,
+  normalizeTodoTags,
+} from "@/lib/validation";
 import type { TodoStatus } from "@/types/domain";
 
 interface RouteParams {
@@ -16,6 +23,8 @@ interface UpdateTodoBody {
   title?: unknown;
   subject?: unknown;
   notes?: unknown;
+  category?: unknown;
+  tags?: unknown;
   priority?: unknown;
   dueAt?: unknown;
   status?: unknown;
@@ -79,6 +88,22 @@ export async function PATCH(request: NextRequest, context: RouteParams) {
       }
       updates.notes = notes;
     }
+  }
+
+  if (parsedBody.data.category !== undefined) {
+    const category = normalizeTodoCategory(parsedBody.data.category);
+    if (category === null) {
+      return errorResponse("VALIDATION_ERROR", "category 必须是字符串，且长度不超过 32。", 400);
+    }
+    updates.category = category;
+  }
+
+  if (parsedBody.data.tags !== undefined) {
+    const tags = normalizeTodoTags(parsedBody.data.tags);
+    if (tags === null) {
+      return errorResponse("VALIDATION_ERROR", "tags 最多 10 项，且每项长度不超过 20。", 400);
+    }
+    updates.tags = tags;
   }
 
   if (parsedBody.data.priority !== undefined) {

@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import type { DbFocusSessionRow, DbSessionTaskRefRow, DbTodoRow } from "@/lib/domain-mappers";
+import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory, normalizeTodoTags } from "@/lib/validation";
 
 export interface SupabaseErrorPayload {
   code?: string;
@@ -74,10 +75,16 @@ interface LocalAccessTokenRow {
   expires_at: string;
 }
 
+interface LocalAuthState {
+  passcode: string | null;
+  updated_at: string | null;
+}
+
 interface LocalDatabaseState {
   version: number;
   users: LocalUserRow[];
   tokens: LocalAccessTokenRow[];
+  auth: LocalAuthState;
   todos: DbTodoRow[];
   focus_sessions: DbFocusSessionRow[];
   session_task_refs: DbSessionTaskRefRow[];
@@ -100,6 +107,10 @@ function emptyState(): LocalDatabaseState {
     version: DATABASE_VERSION,
     users: [],
     tokens: [],
+    auth: {
+      passcode: null,
+      updated_at: null,
+    },
     todos: [],
     focus_sessions: [],
     session_task_refs: [],
@@ -141,6 +152,57 @@ function isTodoStatus(value: unknown): value is DbTodoRow["status"] {
   return value === "pending" || value === "completed" || value === "archived";
 }
 
+function normalizeLocalAuth(value: unknown): LocalAuthState {
+  if (!isObject(value)) {
+    return {
+      passcode: null,
+      updated_at: null,
+    };
+  }
+
+  const passcodeCandidate = typeof value.passcode === "string" ? value.passcode.trim() : null;
+  const passcode = passcodeCandidate && passcodeCandidate.length === PASSCODE_LENGTH ? passcodeCandidate : null;
+  const updatedAt = typeof value.updated_at === "string" ? value.updated_at : null;
+
+  return {
+    passcode,
+    updated_at: updatedAt,
+  };
+}
+
+function normalizeTodoRow(value: unknown): DbTodoRow | null {
+  if (!isObject(value)) {
+    return null;
+  }
+
+  const id = typeof value.id === "string" ? value.id : "";
+  const userId = typeof value.user_id === "string" ? value.user_id : "";
+  if (id === "" || userId === "") {
+    return null;
+  }
+
+  const createdAt = typeof value.created_at === "string" ? value.created_at : nowIso();
+  const updatedAt = typeof value.updated_at === "string" ? value.updated_at : createdAt;
+  const category = normalizeTodoCategory(value.category) ?? DEFAULT_TODO_CATEGORY;
+  const tags = normalizeTodoTags(value.tags) ?? [];
+
+  return {
+    id,
+    user_id: userId,
+    title: typeof value.title === "string" ? value.title : "",
+    subject: toNullableString(value.subject),
+    notes: toNullableString(value.notes),
+    category,
+    tags,
+    priority: Math.max(1, Math.min(3, Math.round(toFiniteNumber(value.priority, 2)))) as 1 | 2 | 3,
+    due_at: toNullableString(value.due_at),
+    status: isTodoStatus(value.status) ? value.status : "pending",
+    completed_at: toNullableString(value.completed_at),
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
 function resolveDatabasePath(): string {
   const configuredPath = process.env.POMLIST_DB_PATH?.trim();
   const relativePath = configuredPath && configuredPath.length > 0 ? configuredPath : "data/pomlist-db.json";
@@ -156,11 +218,16 @@ function hydrateState(value: unknown): LocalDatabaseState {
     return emptyState();
   }
 
+  const todos = Array.isArray(value.todos)
+    ? value.todos.map(normalizeTodoRow).filter((row): row is DbTodoRow => row !== null)
+    : [];
+
   return {
     version: DATABASE_VERSION,
     users: Array.isArray(value.users) ? (value.users as LocalUserRow[]) : [],
     tokens: Array.isArray(value.tokens) ? (value.tokens as LocalAccessTokenRow[]) : [],
-    todos: Array.isArray(value.todos) ? (value.todos as DbTodoRow[]) : [],
+    auth: normalizeLocalAuth(value.auth),
+    todos,
     focus_sessions: Array.isArray(value.focus_sessions) ? (value.focus_sessions as DbFocusSessionRow[]) : [],
     session_task_refs: Array.isArray(value.session_task_refs)
       ? (value.session_task_refs as DbSessionTaskRefRow[])
@@ -242,6 +309,14 @@ function resolveConfiguredPasscode(): string {
   }
 
   return candidate;
+}
+
+function resolvePasscodeFromState(state: LocalDatabaseState): string {
+  const localPasscode = state.auth.passcode?.trim();
+  if (localPasscode && localPasscode.length === PASSCODE_LENGTH) {
+    return localPasscode;
+  }
+  return resolveConfiguredPasscode();
 }
 
 function ensureOwnerUser(state: LocalDatabaseState): LocalUserRow {
@@ -569,6 +644,51 @@ function normalizeUpdatePayload(value: unknown): Record<string, unknown> | null 
   return updates;
 }
 
+function normalizeTodoPatch(updates: Record<string, unknown>): Record<string, unknown> {
+  const normalized = { ...updates };
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "priority")) {
+    normalized.priority = Math.max(1, Math.min(3, Math.round(toFiniteNumber(normalized.priority, 2))));
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "due_at")) {
+    normalized.due_at = toNullableString(normalized.due_at);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "subject")) {
+    normalized.subject = toNullableString(normalized.subject);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "notes")) {
+    normalized.notes = toNullableString(normalized.notes);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "completed_at")) {
+    normalized.completed_at = toNullableString(normalized.completed_at);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "status") && !isTodoStatus(normalized.status)) {
+    delete normalized.status;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "category")) {
+    normalized.category = normalizeTodoCategory(normalized.category) ?? DEFAULT_TODO_CATEGORY;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(normalized, "tags")) {
+    normalized.tags = normalizeTodoTags(normalized.tags) ?? [];
+  }
+
+  return normalized;
+}
+
+function normalizeUpdatesByTable(table: LocalTable, updates: Record<string, unknown>): Record<string, unknown> {
+  if (table === "todos") {
+    return normalizeTodoPatch(updates);
+  }
+  return updates;
+}
+
 function toRecordArray(value: unknown): Record<string, unknown>[] | null {
   if (Array.isArray(value)) {
     const rows = value.filter((item): item is Record<string, unknown> => isObject(item));
@@ -587,6 +707,8 @@ function buildTodoRow(userId: string, payload: Record<string, unknown>, timestam
   const dueAt = toNullableString(payload.due_at);
   const status = isTodoStatus(payload.status) ? payload.status : "pending";
   const completedAt = toNullableString(payload.completed_at);
+  const category = normalizeTodoCategory(payload.category) ?? DEFAULT_TODO_CATEGORY;
+  const tags = normalizeTodoTags(payload.tags) ?? [];
 
   return {
     id: randomUUID(),
@@ -594,6 +716,8 @@ function buildTodoRow(userId: string, payload: Record<string, unknown>, timestam
     title: typeof payload.title === "string" ? payload.title : "",
     subject: toNullableString(payload.subject),
     notes: toNullableString(payload.notes),
+    category,
+    tags,
     priority: priority as 1 | 2 | 3,
     due_at: dueAt,
     status,
@@ -661,7 +785,7 @@ export class SupabaseHttpClient {
 
         let configuredPasscode: string;
         try {
-          configuredPasscode = resolveConfiguredPasscode();
+          configuredPasscode = resolvePasscodeFromState(state);
         } catch (error) {
           return failure<SupabaseAuthPayload>(
             500,
@@ -677,6 +801,40 @@ export class SupabaseHttpClient {
         const user = ensureOwnerUser(state);
         const payload = createUserSession(state, user);
         return success(payload, 200);
+      }),
+
+    changePasscode: async (oldPasscode: string, newPasscode: string): Promise<SupabaseResult<{ updated: true }>> =>
+      withState(true, async (state) => {
+        if (!this.accessToken) {
+          return failure<{ updated: true }>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+        if (oldPasscode.trim().length !== PASSCODE_LENGTH || newPasscode.trim().length !== PASSCODE_LENGTH) {
+          return failure<{ updated: true }>(400, `口令必须是 ${PASSCODE_LENGTH} 个字符`, "BAD_PASSCODE_FORMAT");
+        }
+
+        const user = findUserByToken(state, this.accessToken);
+        if (!user) {
+          return failure<{ updated: true }>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        let configuredPasscode: string;
+        try {
+          configuredPasscode = resolvePasscodeFromState(state);
+        } catch (error) {
+          return failure<{ updated: true }>(
+            500,
+            error instanceof Error ? error.message : "服务器口令配置无效",
+            "PASSCODE_CONFIG_INVALID",
+          );
+        }
+
+        if (configuredPasscode !== oldPasscode) {
+          return failure<{ updated: true }>(401, "旧口令不正确", "INVALID_PASSCODE");
+        }
+
+        state.auth.passcode = newPasscode;
+        state.auth.updated_at = nowIso();
+        return success<{ updated: true }>({ updated: true }, 200);
       }),
 
     signOut: async (): Promise<SupabaseResult<Record<string, never>>> =>
@@ -785,10 +943,11 @@ export class SupabaseHttpClient {
           return failure<T>(401, "登录状态已失效", "UNAUTHORIZED");
         }
 
-        const updates = normalizeUpdatePayload(request.body);
-        if (!updates || Object.keys(updates).length === 0) {
+        const rawUpdates = normalizeUpdatePayload(request.body);
+        if (!rawUpdates || Object.keys(rawUpdates).length === 0) {
           return failure<T>(400, "更新内容不能为空", "BAD_REQUEST");
         }
+        const updates = normalizeUpdatesByTable(tableName, rawUpdates);
 
         const rows = getTableRows(state, tableName);
         const timestamp = nowIso();
@@ -848,4 +1007,5 @@ export class SupabaseHttpClient {
     return Promise.resolve(failure<T>(501, "本地模式暂不支持 RPC 调用", "RPC_NOT_IMPLEMENTED"));
   }
 }
+
 

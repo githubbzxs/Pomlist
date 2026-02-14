@@ -1,4 +1,4 @@
-import { ApiClientError, apiRequest } from "@/lib/client/api-client";
+﻿import { ApiClientError, apiRequest } from "@/lib/client/api-client";
 import { clearAccessToken, setAccessToken } from "@/lib/client/session";
 import type {
   ActiveSession,
@@ -8,6 +8,7 @@ import type {
   TodoItem,
   TrendPoint,
 } from "@/lib/client/types";
+import { DEFAULT_TODO_CATEGORY, normalizeTodoCategory, normalizeTodoTags } from "@/lib/validation";
 
 interface AuthPayload {
   user: { id: string; email: string | null } | null;
@@ -40,11 +41,16 @@ interface ActiveSessionPayload {
 }
 
 function normalizeTodo(item: TodoItem): TodoItem {
+  const category = normalizeTodoCategory((item as TodoItem & { category?: unknown }).category) ?? DEFAULT_TODO_CATEGORY;
+  const tags = normalizeTodoTags((item as TodoItem & { tags?: unknown }).tags) ?? [];
+
   return {
     id: item.id,
     title: item.title,
     subject: item.subject ?? null,
     notes: item.notes ?? null,
+    category,
+    tags,
     priority: item.priority,
     dueAt: item.dueAt ?? null,
     status: item.status,
@@ -89,6 +95,13 @@ export async function signOut(): Promise<void> {
   }
 }
 
+export async function changePasscode(oldPasscode: string, newPasscode: string): Promise<void> {
+  await apiRequest<{ updated: true }>("/api/auth/passcode", {
+    method: "PATCH",
+    body: JSON.stringify({ oldPasscode, newPasscode }),
+  });
+}
+
 export async function listTodos(status?: "pending" | "completed" | "archived"): Promise<TodoItem[]> {
   const query = status ? `?status=${status}` : "";
   const payload = await apiRequest<TodoItem[]>(`/api/todos${query}`);
@@ -99,6 +112,8 @@ export async function createTodo(input: {
   title: string;
   subject?: string | null;
   notes?: string | null;
+  category?: string;
+  tags?: string[];
   priority?: 1 | 2 | 3;
   dueAt?: string | null;
 }): Promise<TodoItem> {
@@ -115,6 +130,8 @@ export async function updateTodo(
     title?: string;
     subject?: string | null;
     notes?: string | null;
+    category?: string;
+    tags?: string[];
     priority?: 1 | 2 | 3;
     dueAt?: string | null;
     status?: "pending" | "completed" | "archived";
@@ -136,6 +153,14 @@ export async function deleteTodo(id: string): Promise<void> {
 
 export async function startSession(todoIds: string[]): Promise<ActiveSession> {
   const payload = await apiRequest<ActiveSessionPayload>("/api/sessions/start", {
+    method: "POST",
+    body: JSON.stringify({ todoIds }),
+  });
+  return mapActiveSession(payload);
+}
+
+export async function addTasksToSession(sessionId: string, todoIds: string[]): Promise<ActiveSession> {
+  const payload = await apiRequest<ActiveSessionPayload>(`/api/sessions/${sessionId}/tasks`, {
     method: "POST",
     body: JSON.stringify({ todoIds }),
   });
@@ -184,3 +209,4 @@ export async function getTrendData(days = 7): Promise<TrendPoint[]> {
 export async function getDistributionData(days = 30): Promise<DistributionBucket[]> {
   return apiRequest<DistributionBucket[]>(`/api/analytics/distribution?days=${days}`);
 }
+

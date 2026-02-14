@@ -1,4 +1,4 @@
-import type { TrendPoint } from "@/lib/client/types";
+﻿import type { TrendPoint } from "@/lib/client/types";
 
 function formatPoints(points: TrendPoint[]) {
   const width = 680;

@@ -1,10 +1,12 @@
-export type TodoStatus = "pending" | "completed" | "archived";
+﻿export type TodoStatus = "pending" | "completed" | "archived";
 
 export type TodoItem = {
   id: string;
   title: string;
   subject: string | null;
   notes: string | null;
+  category: string;
+  tags: string[];
   priority: 1 | 2 | 3;
   dueAt: string | null;
   status: TodoStatus;
@@ -29,6 +31,41 @@ export type ActiveSession = {
   tasks: SessionTask[];
 };
 
+export type CategoryStatsItem = {
+  category: string;
+  taskCount: number;
+  completedCount: number;
+  completionRate: number;
+  totalDurationSeconds: number;
+};
+
+export type HourlyStatsItem = {
+  hour: number;
+  sessionCount: number;
+  totalDurationSeconds: number;
+  completedTaskCount: number;
+};
+
+export type PeriodMetrics = {
+  sessionCount: number;
+  totalDurationSeconds: number;
+  completedTaskCount: number;
+  completionRate: number;
+};
+
+export type EfficiencyDelta = {
+  sessionCount: number;
+  totalDurationSeconds: number;
+  completionRate: number;
+};
+
+export type EfficiencyMetrics = {
+  tasksPerHour: number;
+  avgCompletionRate: number;
+  avgSessionDurationSeconds: number;
+  periodDelta: EfficiencyDelta;
+};
+
 export type DashboardMetrics = {
   date: string;
   sessionCount: number;
@@ -36,6 +73,14 @@ export type DashboardMetrics = {
   completionRate: number;
   streakDays: number;
   completedTaskCount: number;
+  period?: {
+    today: PeriodMetrics;
+    last7: PeriodMetrics;
+    last30: PeriodMetrics;
+  };
+  categoryStats?: CategoryStatsItem[];
+  hourlyDistribution?: HourlyStatsItem[];
+  efficiency?: EfficiencyMetrics;
 };
 
 export type TrendPoint = {
@@ -54,3 +99,4 @@ export type DistributionBucket = {
 export type AuthCredentials = {
   passcode: string;
 };
+
