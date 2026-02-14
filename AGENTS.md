@@ -238,3 +238,29 @@
   - Why：该目录存放本地 JSON 数据库文件，删除会导致任务与会话数据丢失。
   - Impact：远端运维流程中不再清理 data/；仓库通过 .gitignore 忽略 data/ 变更噪音。
   - Verify：git status --short 不再出现 data/，且应用重启后历史数据仍在。
+
+## Decisions（增量）
+
+- **[2026-02-14] 全站视觉重构**：在不改变三面板布局与交互路径的前提下，统一为“蓝黑高拟真玻璃风”。
+  - Why：按参考图提升质感与层次，同时保留现有操作心智。
+  - Impact：`app/globals.css` 重建全局视觉 token、卡片层级、按钮样式、弹层与动效节奏；`app/auth/page.tsx` 同步登录页视觉。
+  - Verify：中心/右/下三面板结构与切换逻辑保持不变，视觉风格统一。
+
+- **[2026-02-14] 任务空状态插画接入**：任务库空列表改为插画空状态展示。
+  - Why：对齐参考图风格并提升空状态可感知性。
+  - Impact：`app/today/page.tsx` 接入 `/illustrations/empty-task-state.svg`；`public/illustrations/README.md` 记录素材来源与许可证。
+  - Verify：任务页无数据时展示插画与引导文案，添加任务后恢复列表。
+
+- **[2026-02-14] 文案与主题色修正**：修复壳层/离线等页面提示文案，统一 PWA 主题色。
+  - Why：消除乱码与旧主题色残留，保证上线一致性。
+  - Impact：`components/app-shell.tsx`、`app/page.tsx`、`app/offline/page.tsx`、`components/feedback-state.tsx`、`components/end-session-dialog.tsx`、`app/layout.tsx`、`public/manifest.webmanifest`。
+  - Verify：页面提示文案可读，PWA 安装后主题色为 `#040914`。
+
+## Commands（增量）
+
+- **[2026-02-14] 全量校验**：`npm run lint && npm run test && npm run typecheck && npm run build`
+
+## Status / Next（增量）
+
+- **[2026-02-14] 当前状态**：UI 高拟真换肤、空状态插画与关键文案修复已完成，待本地全量校验与 VPS 重部署。
+- **[2026-02-14] 下一步**：完成大陆 VPS 重部署后，实机验收登录页、任务空状态、三面板切换与统计渲染。

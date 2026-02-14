@@ -1,4 +1,4 @@
-﻿# Pomlist Web
+# Pomlist Web
 
 Pomlist 是一个任务驱动番茄钟应用，核心不是倒计时结束，而是按任务完成度结束一次专注会话。
 
@@ -19,6 +19,11 @@ Pomlist 是一个任务驱动番茄钟应用，核心不是倒计时结束，而
 - 本地文件数据库（JSON）
 - Tailwind CSS 4
 - Vitest（单元测试）
+
+## 插画与许可
+
+- 任务空状态插画使用开源素材 `public/illustrations/empty-task-state.svg`
+- 来源与许可证说明见 `public/illustrations/README.md`
 
 ## 本地开发
 

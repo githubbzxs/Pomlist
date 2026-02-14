@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -56,8 +56,9 @@ export default function AuthPage() {
   }, [passcode, isSubmitting, submitPasscode]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+    <main className="auth-stage flex min-h-screen items-center justify-center px-4 py-10">
       <form
+        className="auth-form"
         onSubmit={(event) => {
           event.preventDefault();
           if (passcode.length === PASSCODE_LENGTH) {
@@ -65,6 +66,8 @@ export default function AuthPage() {
           }
         }}
       >
+        <p className="auth-kicker page-title">Pomlist</p>
+        <p className="auth-hint">输入四位口令继续</p>
         <input
           ref={inputRef}
           type="password"
