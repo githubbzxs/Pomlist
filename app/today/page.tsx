@@ -86,11 +86,11 @@ function formatClock(seconds: number): string {
 function formatDuration(seconds: number): string {
   const minute = Math.max(0, Math.floor(seconds / 60));
   if (minute < 60) {
-    return `${minute} 鍒嗛挓`;
+    return `${minute} 分钟`;
   }
   const hour = Math.floor(minute / 60);
   const remain = minute % 60;
-  return `${hour} 灏忔椂 ${remain} 鍒嗛挓`;
+  return `${hour} 小时 ${remain} 分钟`;
 }
 
 function errorToText(error: unknown): string {
@@ -970,7 +970,7 @@ export default function TodayPage() {
 
       <section className="mobile-card task-board grow">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="page-title text-lg font-bold text-main">浠诲姟</h2>
+          <h2 className="page-title text-lg font-bold text-main">任务</h2>
           <span className="progress-chip">
             {completedCount}/{totalCount}
           </span>
@@ -998,7 +998,7 @@ export default function TodayPage() {
 
       <section className="center-controls">
         <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
-          娣诲姞浠诲姟
+          添加任务
         </button>
         {session ? (
           <button
@@ -1039,17 +1039,17 @@ export default function TodayPage() {
               setMetaNotice(null);
             }}
           >
-            绠＄悊
+            管理
           </button>
           <button type="button" className="btn-primary h-9 px-3 text-xs" onClick={() => setDrawerOpen(true)}>
-            鏂板缓
+            新建
           </button>
         </div>
       </header>
 
       <section className="mobile-card grow">
         <div className="mb-2 flex items-center justify-between text-xs text-subtle">
-          <span>鍙浠诲姟 {libraryTodos.length}</span>
+          <span>可见任务 {libraryTodos.length}</span>
           <span>
             {session ? "会话中" : "计划中"} {plannedIds.length}
           </span>
@@ -1100,10 +1100,10 @@ export default function TodayPage() {
                       : session
                         ? selected
                           ? "会话中"
-                          : "鍔犲叆"
+                          : "加入"
                         : selected
-                          ? "绉诲嚭"
-                          : "鍔犲叆"}
+                          ? "移出"
+                          : "加入"}
                   </button>
                 </li>
               );
@@ -1130,7 +1130,7 @@ export default function TodayPage() {
                 onClick={() => setMetaManagerOpen(false)}
                 disabled={metaSaving}
               >
-                鍏抽棴
+                关闭
               </button>
             </header>
 
@@ -1144,7 +1144,7 @@ export default function TodayPage() {
                 }}
                 disabled={metaSaving}
               >
-                鍒嗙被
+                分类
               </button>
               <button
                 type="button"
@@ -1155,7 +1155,7 @@ export default function TodayPage() {
                 }}
                 disabled={metaSaving}
               >
-                鏍囩
+                标签
               </button>
             </div>
 
@@ -1179,10 +1179,10 @@ export default function TodayPage() {
                     }}
                     className="meta-manager-color-input"
                     disabled={metaSaving}
-                    aria-label="閫夋嫨鍒嗙被棰滆壊"
+                    aria-label="选择分类颜色"
                   />
                   <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
-                    鏂板
+                    新增
                   </button>
                 </form>
 
@@ -1205,7 +1205,7 @@ export default function TodayPage() {
                             onClick={() => void handleRenameCategory(category, editingCategoryName)}
                             disabled={metaSaving}
                           >
-                            淇濆瓨
+                            保存
                           </button>
                           <button
                             type="button"
@@ -1216,7 +1216,7 @@ export default function TodayPage() {
                             }}
                             disabled={metaSaving}
                           >
-                            鍙栨秷
+                            取消
                           </button>
                         </div>
                       ) : (
@@ -1244,14 +1244,15 @@ export default function TodayPage() {
                               }}
                               disabled={metaSaving}
                             >
-                              閲嶅懡鍚?                            </button>
+                              重命名
+                            </button>
                             <button
                               type="button"
                               className="btn-danger h-8 px-3 text-xs"
                               onClick={() => void handleDeleteCategory(category)}
                               disabled={metaSaving || category === DEFAULT_CATEGORY}
                             >
-                              鍒犻櫎
+                              删除
                             </button>
                           </div>
                         </div>
@@ -1271,7 +1272,7 @@ export default function TodayPage() {
                     disabled={metaSaving}
                   />
                   <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
-                    鏂板
+                    新增
                   </button>
                 </form>
 
@@ -1292,7 +1293,7 @@ export default function TodayPage() {
                             onClick={() => void handleRenameTag(tag, editingTagName)}
                             disabled={metaSaving}
                           >
-                            淇濆瓨
+                            保存
                           </button>
                           <button
                             type="button"
@@ -1303,7 +1304,7 @@ export default function TodayPage() {
                             }}
                             disabled={metaSaving}
                           >
-                            鍙栨秷
+                            取消
                           </button>
                         </div>
                       ) : (
@@ -1320,14 +1321,15 @@ export default function TodayPage() {
                               }}
                               disabled={metaSaving}
                             >
-                              閲嶅懡鍚?                            </button>
+                              重命名
+                            </button>
                             <button
                               type="button"
                               className="btn-danger h-8 px-3 text-xs"
                               onClick={() => void handleDeleteTag(tag)}
                               disabled={metaSaving}
                             >
-                              鍒犻櫎
+                              删除
                             </button>
                           </div>
                         </div>
@@ -1347,14 +1349,14 @@ export default function TodayPage() {
         <div className="task-editor-backdrop" onClick={closeTaskEditor} aria-hidden={!taskEditorOpen}>
           <aside className="task-editor-sheet" onClick={(event) => event.stopPropagation()}>
             <header className="task-editor-header">
-              <h3 className="page-title text-lg font-bold text-main">缂栬緫浠诲姟</h3>
+              <h3 className="page-title text-lg font-bold text-main">编辑任务</h3>
               <button
                 type="button"
                 className="btn-muted h-8 px-3 text-xs"
                 onClick={closeTaskEditor}
                 disabled={taskEditorSaving || taskEditorDeleting}
               >
-                鍏抽棴
+                关闭
               </button>
             </header>
 
@@ -1436,7 +1438,7 @@ export default function TodayPage() {
                 onClick={() => void handleDeleteTaskFromEditor()}
                 disabled={taskEditorSaving || taskEditorDeleting}
               >
-                {taskEditorDeleting ? "鍒犻櫎涓?.." : "鍒犻櫎浠诲姟"}
+                {taskEditorDeleting ? "删除中..." : "删除任务"}
               </button>
               <button
                 type="button"
@@ -1444,7 +1446,7 @@ export default function TodayPage() {
                 onClick={() => void handleSaveTaskEditor()}
                 disabled={taskEditorSaving || taskEditorDeleting}
               >
-                {taskEditorSaving ? "淇濆瓨涓?.." : "淇濆瓨淇敼"}
+                {taskEditorSaving ? "保存中..." : "保存修改"}
               </button>
             </div>
 
@@ -1529,7 +1531,7 @@ export default function TodayPage() {
       </section>
 
       <section className="mobile-card">
-        <h3 className="page-title text-lg font-bold text-main">鍒嗙被璐＄尞</h3>
+        <h3 className="page-title text-lg font-bold text-main">分类贡献</h3>
         {categoryStats.length === 0 ? null : (
           <div className="mt-3 space-y-3">
             {categoryStats.map((item) => {

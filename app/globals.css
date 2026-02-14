@@ -1,8 +1,9 @@
-﻿@import "tailwindcss";
+﻿@import url("https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css");
+@import "tailwindcss";
 
 :root {
-  --font-content: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
-  --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-content: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", serif;
+  --font-display: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", serif;
   --bg-main: #050910;
   --bg-accent: #0f1726;
   --surface-1: rgba(15, 23, 42, 0.62);
@@ -40,7 +41,7 @@ body {
   margin: 0;
   min-height: 100dvh;
   color: var(--text-main);
-  font-family: var(--font-content), "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-content), "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", serif;
   background:
     radial-gradient(circle at 88% -8%, rgba(59, 130, 246, 0.2), transparent 42%),
     radial-gradient(circle at -12% 100%, rgba(249, 115, 22, 0.18), transparent 36%),
@@ -1155,4 +1156,5 @@ button {
     align-items: flex-start;
   }
 }
+
 
