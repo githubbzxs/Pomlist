@@ -141,3 +141,35 @@
 
 - **[2026-02-14] 当前状态**：四向移动画布重构已完成，新增接口与统计维度已接通并通过本地全量校验。
 - **[2026-02-14] 下一步**：部署到 VPS 后做真机/PWA 手势体验验收（重点检查滑动阈值与统计刷新链路）。
+
+## Decisions（增量）
+
+- **[2026-02-14] 主界面极简化**：移除左侧设置面板与边缘导航小胶囊，保留中心专注页 + 右侧任务页 + 下方统计页。
+  - Why：聚焦单人使用场景，降低无效入口与干扰信息。
+  - Impact：`components/mobile/app-canvas.tsx`、`app/today/page.tsx`、`app/globals.css`。
+  - Verify：中心页仅通过手势进入右/下页，设置页入口不存在。
+
+- **[2026-02-14] 文案与标题收敛**：主页面标题改为 `Pomlist`，任务页标题改为 `Task`，统计页标题改为 `Statistic`，移除多处冗余提示语。
+  - Why：强调品牌识别与页面简洁。
+  - Impact：`app/today/page.tsx`。
+  - Verify：不存在“尚未开始/先添加任务/RIGHT/DOWN/全量视图说明”等冗余文案。
+
+- **[2026-02-14] 任务创建字段收敛**：添加任务仅保留标题、分类、标签，移除优先级/科目/备注与搜索栏。
+  - Why：降低输入成本，保留最关键结构化信息。
+  - Impact：`components/mobile/task-picker-drawer.tsx`、`app/today/page.tsx`。
+  - Verify：抽屉表单仅含标题/分类/标签三项，可正常创建并加入计划。
+
+- **[2026-02-14] 分类与标签管理页落地**：在任务页新增管理层，支持新增/重命名/删除分类与标签，并批量同步到任务数据。
+  - Why：满足任务元信息可维护性需求。
+  - Impact：`app/today/page.tsx`、`components/mobile/task-picker-drawer.tsx`。
+  - Verify：管理操作后任务列表与创建输入建议项同步变化。
+
+- **[2026-02-14] 手机顶部白边修复**：统一 PWA 主题色与状态栏样式，补齐安全区与移动端边框处理。
+  - Why：消除移动端顶部白边与回弹露白问题。
+  - Impact：`app/layout.tsx`、`public/manifest.webmanifest`、`app/globals.css`。
+  - Verify：移动端浏览器/PWA 打开 `today` 顶部无白边。
+
+## Status / Next（增量）
+
+- **[2026-02-14] 当前状态**：极简界面重构、任务元管理与白边修复已完成，并通过 `lint/test/typecheck/build`。
+- **[2026-02-14] 下一步**：部署到 VPS 后做真机手势与管理层交互验收，重点确认移动端顶部安全区表现。

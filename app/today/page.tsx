@@ -1,7 +1,6 @@
-﻿"use client";
+"use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { FeedbackState } from "@/components/feedback-state";
@@ -11,7 +10,6 @@ import { useElapsedSeconds } from "@/hooks/use-elapsed-seconds";
 import { ApiClientError } from "@/lib/client/api-client";
 import {
   addTasksToSession,
-  changePasscode,
   createTodo,
   endSession,
   getActiveSession,
@@ -19,9 +17,9 @@ import {
   getDistributionData,
   getTrendData,
   listTodos,
-  signOut,
   startSession,
   toggleSessionTask,
+  updateTodo,
 } from "@/lib/client/pomlist-api";
 import type {
   ActiveSession,
@@ -35,6 +33,7 @@ import type {
 } from "@/lib/client/types";
 
 type LoadMode = "initial" | "refresh";
+type MetaTab = "category" | "tag";
 
 type DisplayTask = {
   id: string;
@@ -42,6 +41,10 @@ type DisplayTask = {
   completed: boolean;
   fromSession: boolean;
 };
+
+const DEFAULT_CATEGORY = "未分类";
+const CATEGORY_REGISTRY_KEY = "pomlist.meta.categories";
+const TAG_REGISTRY_KEY = "pomlist.meta.tags";
 
 const EMPTY_DASHBOARD: DashboardMetrics = {
   date: "",
@@ -102,7 +105,7 @@ function readCategory(todo: TodoItem): string {
   if (todo.subject && todo.subject.trim().length > 0) {
     return todo.subject.trim();
   }
-  return "未分类";
+  return DEFAULT_CATEGORY;
 }
 
 function readTags(todo: TodoItem): string[] {
@@ -120,14 +123,40 @@ function progressPercent(completed: number, total: number): number {
   return Math.round((completed / total) * 100);
 }
 
-export default function TodayPage() {
-  const router = useRouter();
+function mergeUniqueValues(input: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of input) {
+    const value = item.trim();
+    if (!value || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    result.push(value);
+  }
+  return result;
+}
 
+function parseStoredMeta(raw: string | null): string[] {
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return mergeUniqueValues(parsed.filter((item): item is string => typeof item === "string"));
+  } catch {
+    return [];
+  }
+}
+
+export default function TodayPage() {
   const [panel, setPanel] = useState<CanvasPanel>("center");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [starting, setStarting] = useState(false);
   const [ending, setEnding] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -143,16 +172,19 @@ export default function TodayPage() {
   const [plannedIds, setPlannedIds] = useState<string[]>([]);
   const [draftChecks, setDraftChecks] = useState<Record<string, boolean>>({});
 
-  const [libraryKeyword, setLibraryKeyword] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("全部");
+  const [categoryRegistry, setCategoryRegistry] = useState<string[]>([]);
+  const [tagRegistry, setTagRegistry] = useState<string[]>([]);
 
-  const [passcodeForm, setPasscodeForm] = useState({
-    oldPasscode: "",
-    newPasscode: "",
-  });
-  const [changingPasscode, setChangingPasscode] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
+  const [metaManagerOpen, setMetaManagerOpen] = useState(false);
+  const [metaTab, setMetaTab] = useState<MetaTab>("category");
+  const [metaSaving, setMetaSaving] = useState(false);
+  const [metaNotice, setMetaNotice] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [editingTag, setEditingTag] = useState<string | null>(null);
+  const [editingTagName, setEditingTagName] = useState("");
 
   const [tickStartAt, setTickStartAt] = useState<Date | null>(null);
   const [tickSessionId, setTickSessionId] = useState<string | null>(null);
@@ -172,6 +204,28 @@ export default function TodayPage() {
       setTickStartAt(null);
     }
   }, [session?.id, session?.state, tickSessionId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    setCategoryRegistry(parseStoredMeta(window.localStorage.getItem(CATEGORY_REGISTRY_KEY)));
+    setTagRegistry(parseStoredMeta(window.localStorage.getItem(TAG_REGISTRY_KEY)));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(CATEGORY_REGISTRY_KEY, JSON.stringify(categoryRegistry));
+  }, [categoryRegistry]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(TAG_REGISTRY_KEY, JSON.stringify(tagRegistry));
+  }, [tagRegistry]);
 
   const displaySeconds = useMemo(() => {
     if (!session) {
@@ -223,47 +277,44 @@ export default function TodayPage() {
   const totalCount = centerTasks.length;
 
   const categoryOptions = useMemo(() => {
-    const values = new Set<string>();
+    const values = new Set<string>([DEFAULT_CATEGORY]);
     for (const todo of todos) {
       if (todo.status !== "archived") {
         values.add(readCategory(todo));
       }
     }
-    return ["全部", ...Array.from(values)];
-  }, [todos]);
-
-  useEffect(() => {
-    if (!categoryOptions.includes(categoryFilter)) {
-      setCategoryFilter("全部");
+    for (const category of categoryRegistry) {
+      values.add(category);
     }
-  }, [categoryFilter, categoryOptions]);
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  }, [todos, categoryRegistry]);
+
+  const tagOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const todo of todos) {
+      if (todo.status === "archived") {
+        continue;
+      }
+      for (const tag of readTags(todo)) {
+        values.add(tag);
+      }
+    }
+    for (const tag of tagRegistry) {
+      values.add(tag);
+    }
+    return Array.from(values).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  }, [todos, tagRegistry]);
 
   const libraryTodos = useMemo(() => {
-    const keyword = libraryKeyword.trim().toLowerCase();
-
     return todos
       .filter((todo) => todo.status !== "archived")
-      .filter((todo) => {
-        if (categoryFilter !== "全部" && readCategory(todo) !== categoryFilter) {
-          return false;
-        }
-
-        if (keyword.length === 0) {
-          return true;
-        }
-
-        const tags = readTags(todo).join(" ").toLowerCase();
-        return `${todo.title} ${todo.subject ?? ""} ${readCategory(todo)} ${tags}`
-          .toLowerCase()
-          .includes(keyword);
-      })
       .sort((a, b) => {
         if (a.status === b.status) {
-          return b.priority - a.priority;
+          return 0;
         }
         return a.status === "pending" ? -1 : 1;
       });
-  }, [todos, libraryKeyword, categoryFilter]);
+  }, [todos]);
 
   const period = dashboard.period ?? {
     today: {
@@ -283,8 +334,6 @@ export default function TodayPage() {
   const loadData = useCallback(async (mode: LoadMode) => {
     if (mode === "initial") {
       setInitialLoading(true);
-    } else {
-      setRefreshing(true);
     }
     setError(null);
 
@@ -339,14 +388,34 @@ export default function TodayPage() {
 
     if (mode === "initial") {
       setInitialLoading(false);
-    } else {
-      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     void loadData("initial");
   }, [loadData]);
+
+  const runMetaMutation = useCallback(
+    async (mutation: () => Promise<void>): Promise<boolean> => {
+      if (metaSaving) {
+        return false;
+      }
+
+      setMetaSaving(true);
+      setMetaNotice(null);
+      try {
+        await mutation();
+        await loadData("refresh");
+        return true;
+      } catch (mutationError) {
+        setMetaNotice(errorToText(mutationError));
+        return false;
+      } finally {
+        setMetaSaving(false);
+      }
+    },
+    [loadData, metaSaving],
+  );
 
   async function handleTogglePlan(todoId: string) {
     if (session) {
@@ -450,11 +519,8 @@ export default function TodayPage() {
     try {
       const created = await createTodo({
         title: input.title,
-        subject: input.subject || null,
-        notes: input.notes || null,
         category: input.category,
         tags: input.tags,
-        priority: input.priority,
       });
 
       setTodos((prev) => [created, ...prev]);
@@ -473,45 +539,140 @@ export default function TodayPage() {
     }
   }
 
-  async function handleChangePasscode(event: FormEvent<HTMLFormElement>) {
+  function handleAddCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (changingPasscode) {
+    const value = newCategoryName.trim();
+    if (!value) {
+      return;
+    }
+    if (categoryOptions.includes(value)) {
+      setMetaNotice("分类已存在。");
+      return;
+    }
+    setCategoryRegistry((prev) => mergeUniqueValues([...prev, value]));
+    setNewCategoryName("");
+    setMetaNotice("已新增分类。");
+  }
+
+  function handleAddTag(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = newTagName.trim();
+    if (!value) {
+      return;
+    }
+    if (tagOptions.includes(value)) {
+      setMetaNotice("标签已存在。");
+      return;
+    }
+    setTagRegistry((prev) => mergeUniqueValues([...prev, value]));
+    setNewTagName("");
+    setMetaNotice("已新增标签。");
+  }
+
+  async function handleRenameCategory(source: string, target: string) {
+    const nextName = target.trim();
+    if (!nextName) {
+      setMetaNotice("分类不能为空。");
+      return;
+    }
+    if (nextName === source) {
+      setEditingCategory(null);
+      setEditingCategoryName("");
       return;
     }
 
-    const oldPasscode = passcodeForm.oldPasscode.trim();
-    const newPasscode = passcodeForm.newPasscode.trim();
+    const ok = await runMetaMutation(async () => {
+      const affected = todos.filter((todo) => readCategory(todo) === source);
+      if (affected.length > 0) {
+        await Promise.all(affected.map((todo) => updateTodo(todo.id, { category: nextName })));
+      }
+      setCategoryRegistry((prev) => mergeUniqueValues([...prev.filter((item) => item !== source), nextName]));
+    });
 
-    if (oldPasscode.length !== 4 || newPasscode.length !== 4) {
-      setSettingsNotice("口令必须是 4 个字符。");
-      return;
-    }
-
-    setChangingPasscode(true);
-    setSettingsNotice(null);
-    try {
-      await changePasscode(oldPasscode, newPasscode);
-      setPasscodeForm({ oldPasscode: "", newPasscode: "" });
-      setSettingsNotice("口令已更新。下次登录请使用新口令。");
-    } catch (passcodeError) {
-      setSettingsNotice(errorToText(passcodeError));
-    } finally {
-      setChangingPasscode(false);
+    if (ok) {
+      setEditingCategory(null);
+      setEditingCategoryName("");
+      setMetaNotice(`已将分类“${source}”改为“${nextName}”。`);
     }
   }
 
-  async function handleSignOut() {
-    if (signingOut) {
+  async function handleDeleteCategory(category: string) {
+    if (category === DEFAULT_CATEGORY) {
+      setMetaNotice("默认分类不能删除。");
       return;
     }
 
-    setSigningOut(true);
-    try {
-      await signOut();
-      router.replace("/auth");
-    } catch (signOutError) {
-      setSettingsNotice(errorToText(signOutError));
-      setSigningOut(false);
+    const ok = await runMetaMutation(async () => {
+      const affected = todos.filter((todo) => readCategory(todo) === category);
+      if (affected.length > 0) {
+        await Promise.all(affected.map((todo) => updateTodo(todo.id, { category: DEFAULT_CATEGORY })));
+      }
+      setCategoryRegistry((prev) => prev.filter((item) => item !== category));
+    });
+
+    if (ok) {
+      if (editingCategory === category) {
+        setEditingCategory(null);
+        setEditingCategoryName("");
+      }
+      setMetaNotice(`已删除分类“${category}”。`);
+    }
+  }
+
+  async function handleRenameTag(source: string, target: string) {
+    const nextName = target.trim();
+    if (!nextName) {
+      setMetaNotice("标签不能为空。");
+      return;
+    }
+    if (nextName === source) {
+      setEditingTag(null);
+      setEditingTagName("");
+      return;
+    }
+
+    const ok = await runMetaMutation(async () => {
+      const affected = todos.filter((todo) => readTags(todo).includes(source));
+      if (affected.length > 0) {
+        await Promise.all(
+          affected.map(async (todo) => {
+            const nextTags = mergeUniqueValues(
+              readTags(todo).map((tag) => (tag === source ? nextName : tag)),
+            );
+            await updateTodo(todo.id, { tags: nextTags });
+          }),
+        );
+      }
+      setTagRegistry((prev) => mergeUniqueValues([...prev.filter((item) => item !== source), nextName]));
+    });
+
+    if (ok) {
+      setEditingTag(null);
+      setEditingTagName("");
+      setMetaNotice(`已将标签“${source}”改为“${nextName}”。`);
+    }
+  }
+
+  async function handleDeleteTag(tag: string) {
+    const ok = await runMetaMutation(async () => {
+      const affected = todos.filter((todo) => readTags(todo).includes(tag));
+      if (affected.length > 0) {
+        await Promise.all(
+          affected.map(async (todo) => {
+            const nextTags = readTags(todo).filter((item) => item !== tag);
+            await updateTodo(todo.id, { tags: nextTags });
+          }),
+        );
+      }
+      setTagRegistry((prev) => prev.filter((item) => item !== tag));
+    });
+
+    if (ok) {
+      if (editingTag === tag) {
+        setEditingTag(null);
+        setEditingTagName("");
+      }
+      setMetaNotice(`已删除标签“${tag}”。`);
     }
   }
 
@@ -528,31 +689,30 @@ export default function TodayPage() {
   const centerPanel = (
     <div className="canvas-panel-content">
       <header className="canvas-panel-header">
-        <p className="canvas-kicker">CENTER</p>
-        <h1 className="page-title text-2xl font-bold text-main">番茄钟</h1>
-        <p className="text-sm text-subtle">主页面：计时 + 勾选任务 + 实时进度。</p>
+        <h1 className="page-title text-2xl font-bold text-main">Pomlist</h1>
       </header>
 
       <section className="mobile-card timer-card">
-        <p className="text-xs text-subtle">{session ? "专注进行中" : "尚未开始"}</p>
         <p className="timer-display page-title">{formatClock(displaySeconds)}</p>
         <div className="progress-track mt-2">
           <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
         </div>
-        <p className="mt-2 text-xs text-subtle">
-          {totalCount > 0 ? `进度 ${completedCount}/${totalCount}` : "先添加任务，再开始专注"}
-        </p>
+        {totalCount > 0 ? (
+          <p className="mt-2 text-xs text-subtle">
+            {completedCount}/{totalCount}
+          </p>
+        ) : null}
       </section>
 
       <section className="mobile-card task-board grow">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="page-title text-lg font-bold text-main">任务清单</h2>
-          <span className="progress-chip">{completedCount}/{totalCount}</span>
+          <h2 className="page-title text-lg font-bold text-main">任务</h2>
+          <span className="progress-chip">
+            {completedCount}/{totalCount}
+          </span>
         </div>
 
-        {centerTasks.length === 0 ? (
-          <p className="task-empty">还没有任务，点击下方“添加任务”。</p>
-        ) : (
+        {centerTasks.length === 0 ? null : (
           <div className="md-task-list">
             {centerTasks.map((task) => (
               <button
@@ -565,9 +725,6 @@ export default function TodayPage() {
                 <span className={`md-task-checkbox ${task.completed ? "is-checked" : ""}`} />
                 <span className="md-task-content">
                   <span className="md-task-text">{task.title}</span>
-                  <span className="task-meta-muted">
-                    {task.fromSession ? "已同步到本次任务钟" : "当前是计划草稿"}
-                  </span>
                 </span>
               </button>
             ))}
@@ -607,47 +764,34 @@ export default function TodayPage() {
   const rightPanel = (
     <div className="canvas-panel-content">
       <header className="canvas-panel-header">
-        <p className="canvas-kicker">RIGHT</p>
-        <h2 className="page-title text-2xl font-bold text-main">任务库</h2>
-        <p className="text-sm text-subtle">简单罗列、基础分类、可选标签。</p>
-      </header>
-
-      <section className="mobile-card space-y-3">
+        <h2 className="page-title text-2xl font-bold text-main">Task</h2>
         <div className="flex items-center gap-2">
-          <input
-            value={libraryKeyword}
-            onChange={(event) => setLibraryKeyword(event.target.value)}
-            className="input-base h-10"
-            placeholder="搜索任务 / 分类 / 标签"
-          />
-          <button type="button" className="btn-muted h-10 px-3 text-xs" onClick={() => setDrawerOpen(true)}>
+          <button
+            type="button"
+            className="btn-muted h-9 px-3 text-xs"
+            onClick={() => {
+              setMetaManagerOpen(true);
+              setMetaTab("category");
+              setMetaNotice(null);
+            }}
+          >
+            管理
+          </button>
+          <button type="button" className="btn-primary h-9 px-3 text-xs" onClick={() => setDrawerOpen(true)}>
             新建
           </button>
         </div>
-
-        <div className="category-chip-row">
-          {categoryOptions.map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={`category-chip ${categoryFilter === category ? "is-active" : ""}`}
-              onClick={() => setCategoryFilter(category)}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </section>
+      </header>
 
       <section className="mobile-card grow">
         <div className="mb-2 flex items-center justify-between text-xs text-subtle">
           <span>可见任务 {libraryTodos.length}</span>
-          <span>{session ? "会话中" : "计划中"} {plannedIds.length}</span>
+          <span>
+            {session ? "会话中" : "计划中"} {plannedIds.length}
+          </span>
         </div>
 
-        {libraryTodos.length === 0 ? (
-          <p className="task-empty">没有符合条件的任务。</p>
-        ) : (
+        {libraryTodos.length === 0 ? null : (
           <ul className="library-list">
             {libraryTodos.map((todo) => {
               const selected = plannedIds.includes(todo.id);
@@ -664,11 +808,7 @@ export default function TodayPage() {
                     >
                       {todo.title}
                     </p>
-                    <p className="mt-1 text-xs text-subtle">
-                      优先级 {todo.priority}
-                      {todo.subject ? ` · ${todo.subject}` : ""}
-                    </p>
-                    <div className="task-meta-row">
+                    <div className="task-meta-row mt-2">
                       <span className="task-pill">{category}</span>
                       {tags.map((tag) => (
                         <span key={`${todo.id}-${tag}`} className="task-pill task-pill-tag">
@@ -699,65 +839,214 @@ export default function TodayPage() {
           </ul>
         )}
       </section>
-    </div>
-  );
-
-  const leftPanel = (
-    <div className="canvas-panel-content">
-      <header className="canvas-panel-header">
-        <p className="canvas-kicker">LEFT</p>
-        <h2 className="page-title text-2xl font-bold text-main">设置</h2>
-        <p className="text-sm text-subtle">仅保留口令修改与退出登录。</p>
-      </header>
-
-      <form className="mobile-card space-y-3" onSubmit={(event) => void handleChangePasscode(event)}>
-        <label className="setting-row">
-          <span className="text-sm text-subtle">旧口令</span>
-          <input
-            type="password"
-            maxLength={4}
-            value={passcodeForm.oldPasscode}
-            onChange={(event) =>
-              setPasscodeForm((prev) => ({ ...prev, oldPasscode: event.target.value.slice(0, 4) }))
+      {metaManagerOpen ? (
+        <div
+          className="meta-manager-backdrop"
+          onClick={() => {
+            if (!metaSaving) {
+              setMetaManagerOpen(false);
             }
-            className="input-base h-10"
-            placeholder="4 个字符"
-            autoComplete="off"
-          />
-        </label>
-
-        <label className="setting-row">
-          <span className="text-sm text-subtle">新口令</span>
-          <input
-            type="password"
-            maxLength={4}
-            value={passcodeForm.newPasscode}
-            onChange={(event) =>
-              setPasscodeForm((prev) => ({ ...prev, newPasscode: event.target.value.slice(0, 4) }))
-            }
-            className="input-base h-10"
-            placeholder="4 个字符"
-            autoComplete="off"
-          />
-        </label>
-
-        <button type="submit" className="btn-primary h-11 w-full text-sm" disabled={changingPasscode}>
-          {changingPasscode ? "修改中..." : "修改口令"}
-        </button>
-      </form>
-
-      <section className="mobile-card">
-        <button
-          type="button"
-          className="btn-danger h-11 w-full text-sm"
-          onClick={() => void handleSignOut()}
-          disabled={signingOut}
+          }}
+          aria-hidden={!metaManagerOpen}
         >
-          {signingOut ? "退出中..." : "退出登录"}
-        </button>
-      </section>
+          <aside className="meta-manager-sheet" onClick={(event) => event.stopPropagation()}>
+            <header className="meta-manager-header">
+              <h3 className="page-title text-lg font-bold text-main">管理分类与标签</h3>
+              <button
+                type="button"
+                className="btn-muted h-8 px-3 text-xs"
+                onClick={() => setMetaManagerOpen(false)}
+                disabled={metaSaving}
+              >
+                关闭
+              </button>
+            </header>
 
-      {settingsNotice ? <p className="app-inline-note">{settingsNotice}</p> : null}
+            <div className="meta-manager-tabs">
+              <button
+                type="button"
+                className={`meta-manager-tab ${metaTab === "category" ? "is-active" : ""}`}
+                onClick={() => {
+                  setMetaTab("category");
+                  setMetaNotice(null);
+                }}
+                disabled={metaSaving}
+              >
+                分类
+              </button>
+              <button
+                type="button"
+                className={`meta-manager-tab ${metaTab === "tag" ? "is-active" : ""}`}
+                onClick={() => {
+                  setMetaTab("tag");
+                  setMetaNotice(null);
+                }}
+                disabled={metaSaving}
+              >
+                标签
+              </button>
+            </div>
+
+            {metaTab === "category" ? (
+              <div className="meta-manager-body">
+                <form className="meta-manager-create" onSubmit={handleAddCategory}>
+                  <input
+                    value={newCategoryName}
+                    onChange={(event) => setNewCategoryName(event.target.value)}
+                    className="input-base h-10"
+                    placeholder="新增分类"
+                    disabled={metaSaving}
+                  />
+                  <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
+                    新增
+                  </button>
+                </form>
+
+                <div className="meta-manager-list">
+                  {categoryOptions.map((category) => (
+                    <article key={category} className="meta-manager-row">
+                      {editingCategory === category ? (
+                        <div className="meta-manager-row-editor">
+                          <input
+                            value={editingCategoryName}
+                            onChange={(event) => setEditingCategoryName(event.target.value)}
+                            className="input-base h-9"
+                            disabled={metaSaving}
+                          />
+                          <button
+                            type="button"
+                            className="btn-primary h-9 px-3 text-xs"
+                            onClick={() => void handleRenameCategory(category, editingCategoryName)}
+                            disabled={metaSaving}
+                          >
+                            保存
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-muted h-9 px-3 text-xs"
+                            onClick={() => {
+                              setEditingCategory(null);
+                              setEditingCategoryName("");
+                            }}
+                            disabled={metaSaving}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="meta-manager-row-main">
+                          <span className="meta-manager-name">{category}</span>
+                          <div className="meta-manager-row-actions">
+                            <button
+                              type="button"
+                              className="btn-muted h-8 px-3 text-xs"
+                              onClick={() => {
+                                setEditingCategory(category);
+                                setEditingCategoryName(category);
+                                setMetaNotice(null);
+                              }}
+                              disabled={metaSaving}
+                            >
+                              重命名
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-danger h-8 px-3 text-xs"
+                              onClick={() => void handleDeleteCategory(category)}
+                              disabled={metaSaving || category === DEFAULT_CATEGORY}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="meta-manager-body">
+                <form className="meta-manager-create" onSubmit={handleAddTag}>
+                  <input
+                    value={newTagName}
+                    onChange={(event) => setNewTagName(event.target.value)}
+                    className="input-base h-10"
+                    placeholder="新增标签"
+                    disabled={metaSaving}
+                  />
+                  <button type="submit" className="btn-primary h-10 px-3 text-xs" disabled={metaSaving}>
+                    新增
+                  </button>
+                </form>
+
+                <div className="meta-manager-list">
+                  {tagOptions.map((tag) => (
+                    <article key={tag} className="meta-manager-row">
+                      {editingTag === tag ? (
+                        <div className="meta-manager-row-editor">
+                          <input
+                            value={editingTagName}
+                            onChange={(event) => setEditingTagName(event.target.value)}
+                            className="input-base h-9"
+                            disabled={metaSaving}
+                          />
+                          <button
+                            type="button"
+                            className="btn-primary h-9 px-3 text-xs"
+                            onClick={() => void handleRenameTag(tag, editingTagName)}
+                            disabled={metaSaving}
+                          >
+                            保存
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-muted h-9 px-3 text-xs"
+                            onClick={() => {
+                              setEditingTag(null);
+                              setEditingTagName("");
+                            }}
+                            disabled={metaSaving}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="meta-manager-row-main">
+                          <span className="meta-manager-name">#{tag}</span>
+                          <div className="meta-manager-row-actions">
+                            <button
+                              type="button"
+                              className="btn-muted h-8 px-3 text-xs"
+                              onClick={() => {
+                                setEditingTag(tag);
+                                setEditingTagName(tag);
+                                setMetaNotice(null);
+                              }}
+                              disabled={metaSaving}
+                            >
+                              重命名
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-danger h-8 px-3 text-xs"
+                              onClick={() => void handleDeleteTag(tag)}
+                              disabled={metaSaving}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {metaNotice ? <p className="app-inline-note">{metaNotice}</p> : null}
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -767,19 +1056,7 @@ export default function TodayPage() {
   const downPanel = (
     <div className="canvas-panel-content">
       <header className="canvas-panel-header">
-        <div>
-          <p className="canvas-kicker">DOWN</p>
-          <h2 className="page-title text-2xl font-bold text-main">统计</h2>
-          <p className="text-sm text-subtle">时间、个数、效率、分类、时段全量视图。</p>
-        </div>
-        <button
-          type="button"
-          className="btn-muted h-9 px-3 text-xs"
-          onClick={() => void loadData("refresh")}
-          disabled={refreshing}
-        >
-          {refreshing ? "刷新中..." : "刷新"}
-        </button>
+        <h2 className="page-title text-2xl font-bold text-main">Statistic</h2>
       </header>
 
       <section className="analytics-grid">
@@ -838,18 +1115,17 @@ export default function TodayPage() {
           </div>
         </div>
         <p className="mt-3 text-xs text-subtle">
-          与前一周期对比：
-          任务钟 {efficiency.periodDelta.sessionCount >= 0 ? "+" : ""}{efficiency.periodDelta.sessionCount}，
-          时长 {efficiency.periodDelta.totalDurationSeconds >= 0 ? "+" : ""}{formatDuration(Math.abs(efficiency.periodDelta.totalDurationSeconds))}，
-          完成率 {efficiency.periodDelta.completionRate >= 0 ? "+" : ""}{efficiency.periodDelta.completionRate}%
+          与前一周期对比：任务钟 {efficiency.periodDelta.sessionCount >= 0 ? "+" : ""}
+          {efficiency.periodDelta.sessionCount}，时长 {efficiency.periodDelta.totalDurationSeconds >= 0 ? "+" : ""}
+          {formatDuration(Math.abs(efficiency.periodDelta.totalDurationSeconds))}，完成率{" "}
+          {efficiency.periodDelta.completionRate >= 0 ? "+" : ""}
+          {efficiency.periodDelta.completionRate}%
         </p>
       </section>
 
       <section className="mobile-card">
         <h3 className="page-title text-lg font-bold text-main">分类贡献</h3>
-        {categoryStats.length === 0 ? (
-          <p className="task-empty">暂无分类统计数据。</p>
-        ) : (
+        {categoryStats.length === 0 ? null : (
           <div className="mt-3 space-y-3">
             {categoryStats.map((item) => {
               const width = (item.totalDurationSeconds / maxCategorySeconds) * 100;
@@ -876,9 +1152,7 @@ export default function TodayPage() {
 
       <section className="mobile-card">
         <h3 className="page-title text-lg font-bold text-main">时段分布（UTC）</h3>
-        {hourlyDistribution.length === 0 ? (
-          <p className="task-empty">暂无时段数据。</p>
-        ) : (
+        {hourlyDistribution.length === 0 ? null : (
           <div className="mt-3 grid grid-cols-2 gap-2">
             {hourlyDistribution.map((item: HourlyStatsItem) => {
               const width = (item.totalDurationSeconds / maxHourlySeconds) * 100;
@@ -903,7 +1177,6 @@ export default function TodayPage() {
 
       <section className="mobile-card">
         <h3 className="page-title text-lg font-bold text-main">7 天趋势</h3>
-        <p className="mt-1 text-xs text-subtle">按日统计总专注时长</p>
         <div className="mt-3">
           <TrendChart points={trend} />
         </div>
@@ -911,7 +1184,6 @@ export default function TodayPage() {
 
       <section className="mobile-card">
         <h3 className="page-title text-lg font-bold text-main">30 天分布</h3>
-        <p className="mt-1 text-xs text-subtle">按时长区间统计任务钟</p>
         <div className="mt-3">
           <DistributionChart buckets={distribution} />
         </div>
@@ -922,11 +1194,13 @@ export default function TodayPage() {
   return (
     <div className="mobile-page">
       <section className="mobile-phone-frame">
-        <AppCanvas panel={panel} onPanelChange={setPanel} center={centerPanel} left={leftPanel} right={rightPanel} down={downPanel} />
+        <AppCanvas panel={panel} onPanelChange={setPanel} center={centerPanel} right={rightPanel} down={downPanel} />
         <TaskPickerDrawer
           open={drawerOpen}
           todos={pendingTodos}
           selectedIds={plannedIds}
+          categoryOptions={categoryOptions}
+          tagOptions={tagOptions}
           creating={creatingTask}
           sessionActive={Boolean(session)}
           onClose={() => setDrawerOpen(false)}
@@ -937,4 +1211,3 @@ export default function TodayPage() {
     </div>
   );
 }
-

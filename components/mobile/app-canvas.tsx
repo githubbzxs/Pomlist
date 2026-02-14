@@ -3,13 +3,12 @@
 import { useMemo, useRef } from "react";
 import type { ReactNode, TouchEvent } from "react";
 
-export type CanvasPanel = "center" | "left" | "right" | "down";
+export type CanvasPanel = "center" | "right" | "down";
 
 type AppCanvasProps = {
   panel: CanvasPanel;
   onPanelChange: (panel: CanvasPanel) => void;
   center: ReactNode;
-  left: ReactNode;
   right: ReactNode;
   down: ReactNode;
 };
@@ -20,16 +19,12 @@ const SWIPE_THRESHOLD = 56;
 
 const PANEL_OFFSET: Record<CanvasPanel, { x: number; y: number }> = {
   center: { x: 0, y: 0 },
-  left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
   down: { x: 0, y: 1 },
 };
 
 function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): CanvasPanel {
   if (current === "center") {
-    if (direction === "right") {
-      return "left";
-    }
     if (direction === "left") {
       return "right";
     }
@@ -39,9 +34,6 @@ function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): C
     return "center";
   }
 
-  if (current === "left" && direction === "left") {
-    return "center";
-  }
   if (current === "right" && direction === "right") {
     return "center";
   }
@@ -52,7 +44,7 @@ function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): C
   return current;
 }
 
-export function AppCanvas({ panel, onPanelChange, center, left, right, down }: AppCanvasProps) {
+export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanvasProps) {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const trackStyle = useMemo(() => {
@@ -106,29 +98,12 @@ export function AppCanvas({ panel, onPanelChange, center, left, right, down }: A
       <div className="app-canvas-viewport" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div className="app-canvas-track" style={trackStyle}>
           <section className="app-canvas-panel app-canvas-panel-center">{center}</section>
-          <section className="app-canvas-panel app-canvas-panel-left">{left}</section>
           <section className="app-canvas-panel app-canvas-panel-right">{right}</section>
           <section className="app-canvas-panel app-canvas-panel-down">{down}</section>
         </div>
       </div>
 
-      {panel === "center" ? (
-        <div className="canvas-edge-entry" aria-hidden>
-          <button type="button" className="canvas-edge-button canvas-edge-left" onClick={() => onPanelChange("left")}>
-            设置
-          </button>
-          <button
-            type="button"
-            className="canvas-edge-button canvas-edge-right"
-            onClick={() => onPanelChange("right")}
-          >
-            任务
-          </button>
-          <button type="button" className="canvas-edge-button canvas-edge-down" onClick={() => onPanelChange("down")}>
-            统计
-          </button>
-        </div>
-      ) : (
+      {panel === "center" ? null : (
         <button type="button" className="canvas-center-button" onClick={() => onPanelChange("center")}>
           返回专注
         </button>

@@ -20,12 +20,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Pomlist",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f97316",
+  themeColor: "#050910",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

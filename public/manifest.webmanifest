@@ -4,8 +4,8 @@
   "description": "任务驱动番茄钟与待办复盘",
   "start_url": "/today",
   "display": "standalone",
-  "background_color": "#fff7ed",
-  "theme_color": "#f97316",
+  "background_color": "#050910",
+  "theme_color": "#050910",
   "lang": "zh-CN",
   "icons": [
     {
@@ -28,4 +28,3 @@
     }
   ]
 }
-
