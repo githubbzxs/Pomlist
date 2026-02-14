@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   isUuid,
+  isValidPasscode,
   normalizeDueAt,
   normalizePriority,
   normalizeText,
@@ -40,5 +41,10 @@ describe("validation", () => {
     expect(isUuid("bad-id")).toBe(false);
     expect(uniqueIds(["a", "a", "b"])).toEqual(["a", "b"]);
   });
-});
 
+  it("口令长度校验", () => {
+    expect(isValidPasscode("0xbp")).toBe(true);
+    expect(isValidPasscode("123")).toBe(false);
+    expect(isValidPasscode("12345")).toBe(false);
+  });
+});

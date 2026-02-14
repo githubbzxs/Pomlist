@@ -1,5 +1,6 @@
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSCODE_LENGTH = 4;
 
 export function isUuid(value: string): boolean {
   return UUID_REGEX.test(value);
@@ -7,6 +8,10 @@ export function isUuid(value: string): boolean {
 
 export function isValidEmail(value: string): boolean {
   return SIMPLE_EMAIL_REGEX.test(value);
+}
+
+export function isValidPasscode(value: string): boolean {
+  return value.length === PASSCODE_LENGTH;
 }
 
 export function normalizeTitle(input: unknown): string | null {
@@ -68,4 +73,3 @@ export function normalizeDueAt(input: unknown): string | null {
 export function uniqueIds(input: string[]): string[] {
   return Array.from(new Set(input.filter((item) => item.trim() !== "")));
 }
-

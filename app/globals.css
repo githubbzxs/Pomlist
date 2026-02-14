@@ -126,3 +126,66 @@ button {
   border-color: rgba(249, 115, 22, 0.7);
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18);
 }
+
+.auth-passcode-input {
+  width: 6.8rem;
+  height: 2.9rem;
+  border-radius: 1rem;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-main);
+  font-size: 1.1rem;
+  letter-spacing: 0.22em;
+  text-align: center;
+  transition:
+    width 240ms ease,
+    height 240ms ease,
+    border-color 180ms ease,
+    box-shadow 240ms ease,
+    transform 180ms ease;
+}
+
+.auth-passcode-input-expanded {
+  width: min(88vw, 26rem);
+  height: 3.4rem;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14);
+}
+
+.auth-passcode-input:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.78);
+  box-shadow:
+    0 0 0 3px rgba(249, 115, 22, 0.2),
+    0 16px 32px rgba(15, 23, 42, 0.16);
+}
+
+.auth-passcode-input-error {
+  border-color: rgba(220, 38, 38, 0.72);
+  box-shadow:
+    0 0 0 3px rgba(220, 38, 38, 0.18),
+    0 14px 30px rgba(220, 38, 38, 0.12);
+  animation: auth-passcode-shake 360ms ease;
+}
+
+@keyframes auth-passcode-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-7px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-5px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+}

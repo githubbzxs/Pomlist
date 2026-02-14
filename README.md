@@ -7,7 +7,7 @@ Pomlist 是一个任务驱动番茄钟应用，核心不是倒计时结束，而
 
 ## 核心功能
 
-- 账号体系：邮箱 + 密码（注册 / 登录 / 退出）
+- 账号体系：四字符口令登录（单输入框解锁 / 退出）
 - To-Do：新增、编辑、完成/恢复、删除、优先级与截止时间
 - 任务钟：从待办多选启动，进行中勾选任务，手动结束并记录完成比
 - 复盘：今日指标、近 7 天趋势、近 30 天时长分布、连续专注天数
@@ -33,6 +33,8 @@ npm install
 ```bash
 # 自定义本地数据库文件路径（默认 data/pomlist-db.json）
 POMLIST_DB_PATH=data/pomlist-db.json
+# 登录口令，必须是 4 个字符（默认 0xbp）
+POMLIST_PASSCODE=0xbp
 ```
 
 3. 启动开发服务：
@@ -62,7 +64,6 @@ npm run build
 
 ## API 概览
 
-- `POST /api/auth/sign-up`
 - `POST /api/auth/sign-in`
 - `POST /api/auth/sign-out`
 - `GET /api/todos`

@@ -52,7 +52,5 @@ export type DistributionBucket = {
 };
 
 export type AuthCredentials = {
-  email: string;
-  password: string;
+  passcode: string;
 };
-

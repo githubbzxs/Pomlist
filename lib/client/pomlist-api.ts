@@ -70,17 +70,6 @@ function mapActiveSession(payload: ActiveSessionPayload): ActiveSession {
   };
 }
 
-export async function signUp(credentials: AuthCredentials): Promise<void> {
-  const payload = await apiRequest<AuthPayload>("/api/auth/sign-up", {
-    method: "POST",
-    body: JSON.stringify(credentials),
-    auth: false,
-  });
-  if (payload.session?.accessToken) {
-    setAccessToken(payload.session.accessToken);
-  }
-}
-
 export async function signIn(credentials: AuthCredentials): Promise<void> {
   const payload = await apiRequest<AuthPayload>("/api/auth/sign-in", {
     method: "POST",

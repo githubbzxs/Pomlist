@@ -1,4 +1,4 @@
-﻿import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+﻿import { randomBytes, randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -63,8 +63,6 @@ interface SupabaseEnv {
 interface LocalUserRow {
   id: string;
   email: string;
-  password_salt: string;
-  password_hash: string;
   created_at: string;
   updated_at: string;
 }
@@ -90,6 +88,10 @@ type LocalTableRow = DbTodoRow | DbFocusSessionRow | DbSessionTaskRefRow;
 
 const DATABASE_VERSION = 1;
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+const OWNER_USER_ID = "owner-user";
+const OWNER_USER_EMAIL = "owner@pomlist.local";
+const PASSCODE_LENGTH = 4;
+const DEFAULT_PASSCODE = "0xbp";
 
 let operationQueue: Promise<unknown> = Promise.resolve();
 
@@ -104,27 +106,8 @@ function emptyState(): LocalDatabaseState {
   };
 }
 
-function normalizeEmail(input: string): string {
-  return input.trim().toLowerCase();
-}
-
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function hashPassword(password: string, salt: string): string {
-  return scryptSync(password, salt, 64).toString("hex");
-}
-
-function verifyPassword(password: string, salt: string, expectedHash: string): boolean {
-  const actualHash = Buffer.from(hashPassword(password, salt), "hex");
-  const expected = Buffer.from(expectedHash, "hex");
-
-  if (actualHash.length !== expected.length) {
-    return false;
-  }
-
-  return timingSafeEqual(actualHash, expected);
 }
 
 function createAccessTokenValue(): string {
@@ -250,6 +233,37 @@ function findUserByToken(state: LocalDatabaseState, tokenValue: string | undefin
   }
 
   return state.users.find((item) => item.id === token.user_id) ?? null;
+}
+
+function resolveConfiguredPasscode(): string {
+  const candidate = process.env.POMLIST_PASSCODE?.trim() || DEFAULT_PASSCODE;
+  if (candidate.length !== PASSCODE_LENGTH) {
+    throw new Error(`POMLIST_PASSCODE 必须是 ${PASSCODE_LENGTH} 个字符`);
+  }
+
+  return candidate;
+}
+
+function ensureOwnerUser(state: LocalDatabaseState): LocalUserRow {
+  const ownerById = state.users.find((item) => item.id === OWNER_USER_ID);
+  if (ownerById) {
+    return ownerById;
+  }
+
+  // 兼容历史数据，优先复用已有首个用户，避免“换账号”导致旧数据不可见。
+  if (state.users.length > 0) {
+    return state.users[0];
+  }
+
+  const timestamp = nowIso();
+  const owner: LocalUserRow = {
+    id: OWNER_USER_ID,
+    email: OWNER_USER_EMAIL,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  state.users.push(owner);
+  return owner;
 }
 
 function createUserSession(state: LocalDatabaseState, user: LocalUserRow): SupabaseAuthPayload {
@@ -636,42 +650,31 @@ export class SupabaseHttpClient {
   }
 
   auth = {
-    signUp: async (email: string, password: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
+    signUp: async (): Promise<SupabaseResult<SupabaseAuthPayload>> =>
+      Promise.resolve(failure<SupabaseAuthPayload>(410, "注册入口已关闭，请使用口令登录", "SIGN_UP_DISABLED")),
+
+    signIn: async (passcode: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
       withState(true, async (state) => {
-        const normalizedEmail = normalizeEmail(email);
-        if (normalizedEmail === "" || password.trim() === "") {
-          return failure<SupabaseAuthPayload>(400, "邮箱和密码不能为空");
+        if (passcode.trim().length !== PASSCODE_LENGTH) {
+          return failure<SupabaseAuthPayload>(400, `口令必须是 ${PASSCODE_LENGTH} 个字符`, "BAD_PASSCODE_FORMAT");
         }
 
-        const existing = state.users.find((item) => item.email === normalizedEmail);
-        if (existing) {
-          return failure<SupabaseAuthPayload>(409, "该邮箱已注册", "USER_ALREADY_EXISTS");
+        let configuredPasscode: string;
+        try {
+          configuredPasscode = resolveConfiguredPasscode();
+        } catch (error) {
+          return failure<SupabaseAuthPayload>(
+            500,
+            error instanceof Error ? error.message : "服务器口令配置无效",
+            "PASSCODE_CONFIG_INVALID",
+          );
         }
 
-        const timestamp = nowIso();
-        const salt = randomBytes(16).toString("hex");
-        const user: LocalUserRow = {
-          id: randomUUID(),
-          email: normalizedEmail,
-          password_salt: salt,
-          password_hash: hashPassword(password, salt),
-          created_at: timestamp,
-          updated_at: timestamp,
-        };
-        state.users.push(user);
-
-        const payload = createUserSession(state, user);
-        return success(payload, 200);
-      }),
-
-    signIn: async (email: string, password: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
-      withState(true, async (state) => {
-        const normalizedEmail = normalizeEmail(email);
-        const user = state.users.find((item) => item.email === normalizedEmail);
-        if (!user || !verifyPassword(password, user.password_salt, user.password_hash)) {
-          return failure<SupabaseAuthPayload>(401, "邮箱或密码错误", "INVALID_LOGIN");
+        if (passcode !== configuredPasscode) {
+          return failure<SupabaseAuthPayload>(401, "口令错误", "INVALID_PASSCODE");
         }
 
+        const user = ensureOwnerUser(state);
         const payload = createUserSession(state, user);
         return success(payload, 200);
       }),
@@ -845,3 +848,4 @@ export class SupabaseHttpClient {
     return Promise.resolve(failure<T>(501, "本地模式暂不支持 RPC 调用", "RPC_NOT_IMPLEMENTED"));
   }
 }
+

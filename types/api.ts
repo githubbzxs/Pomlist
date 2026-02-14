@@ -3,6 +3,7 @@ export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "UNAUTHORIZED"
   | "FORBIDDEN"
+  | "SIGN_UP_DISABLED"
   | "NOT_FOUND"
   | "CONFLICT"
   | "ACTIVE_SESSION_EXISTS"
