@@ -98,3 +98,10 @@
   - Why：第一次降速后体感仍偏快。
   - Impact：`app/globals.css` 新增 `--dur-expand`，并显著拉长 `auth-passcode-input` 展开、`staggered-reveal` 入场与背景漂移动效；`app/auth/page.tsx` 错误态计时同步为 780ms。
   - Verify：本地 `npm run lint && npm run typecheck && npm run build` 通过。
+
+## Decisions（增量）
+
+- **[2026-02-14] 点击缓冲动效**：登录输入框加入“按下-回弹-展开”弹性缓冲，并全站再慢一档。
+  - Why：用户反馈“点击一瞬间切换太快”，需要更有缓冲感。
+  - Impact：`app/globals.css` 增加 `passcode-press-buffer` 关键帧并上调全局时长变量；`app/auth/page.tsx` 错误态计时同步为 900ms。
+  - Verify：本地 `npm run lint && npm run typecheck && npm run build` 通过。
