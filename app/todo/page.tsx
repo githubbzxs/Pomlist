@@ -263,7 +263,7 @@ export default function TodoPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelected(todo.id)}
-                      className="mt-1 h-4 w-4 accent-orange-500"
+                      className="mt-1 h-4 w-4 accent-blue-500"
                     />
                     <div className="min-w-0 flex-1">
                       {isEditing ? (

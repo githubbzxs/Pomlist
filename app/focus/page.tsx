@@ -132,7 +132,7 @@ export default function FocusPage() {
                   type="checkbox"
                   checked={task.completed}
                   onChange={(event) => void toggleTask(task.todoId, event.target.checked)}
-                  className="h-4 w-4 accent-orange-500"
+                  className="h-4 w-4 accent-blue-500"
                 />
                 <span className={`line-clamp-1 text-sm ${task.completed ? "text-subtle line-through" : "text-main"}`}>
                   {task.title}

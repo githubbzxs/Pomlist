@@ -41,16 +41,16 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
       <svg viewBox="0 0 680 260" className="h-60 w-full" role="img" aria-label="7天专注时长趋势图">
         <defs>
           <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(251,146,60,0.38)" />
-            <stop offset="100%" stopColor="rgba(251,146,60,0.06)" />
+            <stop offset="0%" stopColor="rgba(59,130,246,0.38)" />
+            <stop offset="100%" stopColor="rgba(59,130,246,0.06)" />
           </linearGradient>
         </defs>
         <line x1="30" y1="230" x2="650" y2="230" stroke="rgba(148,163,184,0.34)" strokeWidth="2" />
         <polyline points={`30,230 ${polyline} 650,230`} fill="url(#trendFill)" stroke="none" />
-        <polyline points={polyline} fill="none" stroke="#fb923c" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+        <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
         {layout.map((point) => (
           <g key={point.date}>
-            <circle cx={point.x} cy={point.y} r="5" fill="#f97316" />
+            <circle cx={point.x} cy={point.y} r="5" fill="#2563eb" />
             <text x={point.x} y="250" textAnchor="middle" className="fill-slate-300 text-[12px]">
               {shortDate(point.date)}
             </text>

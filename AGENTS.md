@@ -238,3 +238,19 @@
   - Why：该目录存放本地 JSON 数据库文件，删除会导致任务与会话数据丢失。
   - Impact：远端运维流程中不再清理 data/；仓库通过 .gitignore 忽略 data/ 变更噪音。
   - Verify：git status --short 不再出现 data/，且应用重启后历史数据仍在。
+
+## Decisions（增量）
+
+- **[2026-02-15] 主题对齐调整**：全站背景改为纯黑，强调色统一改为蓝色。
+  - Why：按最新设计参考图收敛视觉方向（黑底 + 蓝色高亮）。
+  - Impact：`app/globals.css`、`app/layout.tsx`、`public/manifest.webmanifest`、`public/icons/*`、`components/charts/*`、`app/focus/page.tsx`、`app/todo/page.tsx`、`app/today/page.tsx`。
+  - Verify：页面背景为黑色，主按钮/进度/图表/勾选强调为蓝色，移动端与 PWA 主题色一致。
+
+## Commands（增量）
+
+- **[2026-02-15] 全量校验**：`npm run lint && npm run test && npm run typecheck && npm run build`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：黑底蓝强调主题已落地并通过本地全量校验，待推送并重部署。
+- **[2026-02-15] 下一步**：完成大陆 VPS 重部署后，验收 `today` 与 `auth` 页的色彩一致性。

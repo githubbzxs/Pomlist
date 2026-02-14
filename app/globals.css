@@ -4,15 +4,15 @@
 :root {
   --font-content: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", serif;
   --font-display: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", serif;
-  --bg-main: #050910;
-  --bg-accent: #0f1726;
+  --bg-main: #000000;
+  --bg-accent: #000000;
   --surface-1: rgba(15, 23, 42, 0.62);
   --surface-2: rgba(15, 23, 42, 0.78);
   --text-main: #e5ecf6;
   --text-subtle: #9eb0c8;
   --line-soft: rgba(148, 163, 184, 0.22);
-  --brand: #fb923c;
-  --brand-deep: #f97316;
+  --brand: #3b82f6;
+  --brand-deep: #2563eb;
   --ok: #22c55e;
   --danger: #ef4444;
   --shadow-soft: 0 16px 40px rgba(2, 8, 23, 0.5);
@@ -43,8 +43,8 @@ body {
   color: var(--text-main);
   font-family: var(--font-content), "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", serif;
   background:
-    radial-gradient(circle at 88% -8%, rgba(59, 130, 246, 0.2), transparent 42%),
-    radial-gradient(circle at -12% 100%, rgba(249, 115, 22, 0.18), transparent 36%),
+    radial-gradient(circle at 88% -8%, rgba(59, 130, 246, 0.24), transparent 44%),
+    radial-gradient(circle at -12% 100%, rgba(37, 99, 235, 0.2), transparent 40%),
     linear-gradient(155deg, var(--bg-main), var(--bg-accent));
   overflow-x: hidden;
   overscroll-behavior-y: none;
@@ -57,10 +57,10 @@ body::before {
   pointer-events: none;
   background: conic-gradient(
     from 140deg,
-    rgba(56, 189, 248, 0.16),
-    rgba(14, 165, 233, 0.06),
-    rgba(249, 115, 22, 0.1),
-    rgba(56, 189, 248, 0.16)
+    rgba(59, 130, 246, 0.16),
+    rgba(37, 99, 235, 0.08),
+    rgba(30, 64, 175, 0.1),
+    rgba(59, 130, 246, 0.16)
   );
   filter: blur(90px);
   opacity: 0.42;
@@ -169,7 +169,7 @@ button {
 
 .btn-primary:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.28);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.32);
 }
 
 .btn-muted {
@@ -482,7 +482,7 @@ button {
 .progress-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #f97316, #fdba74);
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
   transition: width var(--dur-fast) var(--ease-smooth);
 }
 
@@ -491,9 +491,9 @@ button {
   padding: 0.2rem 0.6rem;
   font-size: 0.74rem;
   font-weight: 700;
-  color: #fed7aa;
-  background: rgba(249, 115, 22, 0.2);
-  border: 1px solid rgba(251, 146, 60, 0.35);
+  color: #dbeafe;
+  background: rgba(37, 99, 235, 0.22);
+  border: 1px solid rgba(59, 130, 246, 0.42);
 }
 
 .task-board {
@@ -532,8 +532,8 @@ button {
 }
 
 .md-task-item.is-selected {
-  border-color: rgba(251, 146, 60, 0.55);
-  background: rgba(249, 115, 22, 0.18);
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(37, 99, 235, 0.2);
 }
 
 .md-task-checkbox {
@@ -686,9 +686,9 @@ button {
 }
 
 .category-chip.is-active {
-  color: #ffedd5;
-  border-color: rgba(251, 146, 60, 0.55);
-  background: rgba(249, 115, 22, 0.22);
+  color: #dbeafe;
+  border-color: rgba(59, 130, 246, 0.55);
+  background: rgba(37, 99, 235, 0.24);
 }
 
 .analytics-grid {

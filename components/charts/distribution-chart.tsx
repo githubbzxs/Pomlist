@@ -30,7 +30,7 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
             </div>
             <div className="h-3 rounded-full bg-[rgba(148,163,184,0.16)]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400"
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
                 style={{ width: `${ratio}%` }}
               />
             </div>

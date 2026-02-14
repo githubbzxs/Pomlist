@@ -45,7 +45,7 @@ const DEFAULT_CATEGORY = "未分类";
 const DEFAULT_PRIMARY_TAG = "未标签";
 const TAG_REGISTRY_KEY = "pomlist.meta.tags";
 const TAG_COLOR_REGISTRY_KEY = "pomlist.meta.tag-colors";
-const COMMON_TAG_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6", "#6366f1", "#ec4899"];
+const COMMON_TAG_COLORS = ["#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#0ea5e9", "#06b6d4", "#38bdf8", "#6366f1"];
 const DEFAULT_TAG_COLOR = COMMON_TAG_COLORS[0];
 
 const EMPTY_DASHBOARD: DashboardMetrics = {
@@ -1322,7 +1322,7 @@ export default function TodayPage() {
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-[rgba(148,163,184,0.2)]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-300"
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
                       style={{ width: `${Math.max(4, width)}%` }}
                     />
                   </div>

@@ -4,8 +4,8 @@
   "description": "任务驱动番茄钟与待办复盘",
   "start_url": "/today",
   "display": "standalone",
-  "background_color": "#050910",
-  "theme_color": "#050910",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "lang": "zh-CN",
   "icons": [
     {
