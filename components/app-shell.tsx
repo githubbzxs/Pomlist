@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex min-h-screen items-center justify-center px-6">
         <section className="panel w-full max-w-sm p-6 text-center">
           <p className="page-title text-xl font-bold text-main">Pomlist</p>
-          <p className="mt-2 text-sm text-subtle">正在验证登录状态...</p>
+          <p className="mt-2 text-sm text-subtle">姝ｅ湪楠岃瘉鐧诲綍鐘舵€?..</p>
         </section>
       </main>
     );

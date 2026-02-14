@@ -8,8 +8,8 @@ type FeedbackStateProps = {
 };
 
 const ICON_MAP: Record<FeedbackStateProps["variant"], string> = {
-  loading: "◌",
-  empty: "○",
+  loading: "⟳",
+  empty: "◌",
   error: "!",
 };
 

@@ -1,7 +1,6 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { FeedbackState } from "@/components/feedback-state";
@@ -915,13 +914,7 @@ export default function TodayPage() {
           </span>
         </div>
 
-        {libraryTodos.length === 0 ? (
-          <div className="task-library-empty">
-            <Image src="/illustrations/empty-task-state.svg" alt="任务空状态插画" width={220} height={170} priority />
-            <p className="task-library-empty-title">还没有任务</p>
-            <p className="task-library-empty-desc">点击右上角“新建”开始第一条计划。</p>
-          </div>
-        ) : (
+        {libraryTodos.length === 0 ? null : (
           <ul className="library-list">
             {libraryTodos.map((todo) => {
               const selected = plannedIds.includes(todo.id);

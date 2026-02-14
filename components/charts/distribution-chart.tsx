@@ -1,4 +1,4 @@
-import type { DistributionBucket } from "@/lib/client/types";
+﻿import type { DistributionBucket } from "@/lib/client/types";
 
 function toMinutes(seconds: number): number {
   return Math.round(seconds / 60);
@@ -30,7 +30,7 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
             </div>
             <div className="h-3 rounded-full bg-[rgba(148,163,184,0.16)]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
+                className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400"
                 style={{ width: `${ratio}%` }}
               />
             </div>

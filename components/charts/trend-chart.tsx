@@ -1,4 +1,4 @@
-import type { TrendPoint } from "@/lib/client/types";
+﻿import type { TrendPoint } from "@/lib/client/types";
 
 function formatPoints(points: TrendPoint[]) {
   const width = 680;
@@ -41,18 +41,17 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
       <svg viewBox="0 0 680 260" className="h-60 w-full" role="img" aria-label="7天专注时长趋势图">
         <defs>
           <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(76, 221, 255, 0.38)" />
-            <stop offset="100%" stopColor="rgba(76, 221, 255, 0.06)" />
+            <stop offset="0%" stopColor="rgba(251,146,60,0.38)" />
+            <stop offset="100%" stopColor="rgba(251,146,60,0.06)" />
           </linearGradient>
         </defs>
-        <line x1="30" y1="130" x2="650" y2="130" stroke="rgba(129, 162, 205, 0.2)" strokeWidth="1.5" />
-        <line x1="30" y1="230" x2="650" y2="230" stroke="rgba(129, 162, 205, 0.34)" strokeWidth="2" />
+        <line x1="30" y1="230" x2="650" y2="230" stroke="rgba(148,163,184,0.34)" strokeWidth="2" />
         <polyline points={`30,230 ${polyline} 650,230`} fill="url(#trendFill)" stroke="none" />
-        <polyline points={polyline} fill="none" stroke="#34d4ff" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+        <polyline points={polyline} fill="none" stroke="#fb923c" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
         {layout.map((point) => (
           <g key={point.date}>
-            <circle cx={point.x} cy={point.y} r="5" fill="#63ddff" />
-            <text x={point.x} y="250" textAnchor="middle" style={{ fill: "#9db3d0", fontSize: "12px" }}>
+            <circle cx={point.x} cy={point.y} r="5" fill="#f97316" />
+            <text x={point.x} y="250" textAnchor="middle" className="fill-slate-300 text-[12px]">
               {shortDate(point.date)}
             </text>
           </g>
