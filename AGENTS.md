@@ -42,3 +42,18 @@
 - **[2026-02-13] 离线能力边界**：仅保证基础页面可打开，业务数据依赖网络。
   - Verify：断网访问 `/offline`，联网后恢复 API 请求。
 
+
+## Decisions（增量）
+
+- **[2026-02-14] 数据层切换**：移除 Supabase 依赖，改为本地 JSON 文件存储（默认 `data/pomlist-db.json`）。
+  - Why：大陆服务器部署要求降低外部依赖，提升可控性。
+  - Impact：`lib/supabase/shared.ts` 改为本地兼容实现，API 路由保持不变。
+
+## Commands（增量）
+
+- **[2026-02-14] 可选数据路径**：`POMLIST_DB_PATH=<path>`（默认 `data/pomlist-db.json`）
+
+## Status / Next（增量）
+
+- **[2026-02-14] 当前状态**：已完成无 Supabase 版本改造，准备验证并在大陆服务器重部署。
+- **[2026-02-14] 下一步**：线上验证登录、任务、任务钟与复盘闭环。

@@ -1,3 +1,9 @@
+﻿import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
+import type { DbFocusSessionRow, DbSessionTaskRefRow, DbTodoRow } from "@/lib/domain-mappers";
+
 export interface SupabaseErrorPayload {
   code?: string;
   message: string;
@@ -29,17 +35,9 @@ export interface SupabaseUserPayload {
 }
 
 interface SupabaseClientConfig {
-  url: string;
-  apiKey: string;
+  url?: string;
+  apiKey?: string;
   accessToken?: string;
-}
-
-interface SupabaseRequest {
-  method: "GET" | "POST" | "PATCH" | "DELETE";
-  path: string;
-  query?: Record<string, string | number | boolean | undefined>;
-  body?: unknown;
-  prefer?: string;
 }
 
 interface SupabaseRestRequest {
@@ -62,199 +60,788 @@ interface SupabaseEnv {
   serviceRoleKey?: string;
 }
 
-function ensureEnv(name: string, value: string | undefined): string {
-  if (!value || value.trim() === "") {
-    throw new Error(`缺少环境变量：${name}`);
+interface LocalUserRow {
+  id: string;
+  email: string;
+  password_salt: string;
+  password_hash: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface LocalAccessTokenRow {
+  token: string;
+  user_id: string;
+  created_at: string;
+  expires_at: string;
+}
+
+interface LocalDatabaseState {
+  version: number;
+  users: LocalUserRow[];
+  tokens: LocalAccessTokenRow[];
+  todos: DbTodoRow[];
+  focus_sessions: DbFocusSessionRow[];
+  session_task_refs: DbSessionTaskRefRow[];
+}
+
+type LocalTable = "todos" | "focus_sessions" | "session_task_refs";
+type LocalTableRow = DbTodoRow | DbFocusSessionRow | DbSessionTaskRefRow;
+
+const DATABASE_VERSION = 1;
+const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+let operationQueue: Promise<unknown> = Promise.resolve();
+
+function emptyState(): LocalDatabaseState {
+  return {
+    version: DATABASE_VERSION,
+    users: [],
+    tokens: [],
+    todos: [],
+    focus_sessions: [],
+    session_task_refs: [],
+  };
+}
+
+function normalizeEmail(input: string): string {
+  return input.trim().toLowerCase();
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function hashPassword(password: string, salt: string): string {
+  return scryptSync(password, salt, 64).toString("hex");
+}
+
+function verifyPassword(password: string, salt: string, expectedHash: string): boolean {
+  const actualHash = Buffer.from(hashPassword(password, salt), "hex");
+  const expected = Buffer.from(expectedHash, "hex");
+
+  if (actualHash.length !== expected.length) {
+    return false;
+  }
+
+  return timingSafeEqual(actualHash, expected);
+}
+
+function createAccessTokenValue(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toNullableString(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  return typeof value === "string" ? value : null;
+}
+
+function toFiniteNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toBoolean(value: unknown, fallback = false): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return fallback;
+}
+
+function isTodoStatus(value: unknown): value is DbTodoRow["status"] {
+  return value === "pending" || value === "completed" || value === "archived";
+}
+
+function resolveDatabasePath(): string {
+  const configuredPath = process.env.POMLIST_DB_PATH?.trim();
+  const relativePath = configuredPath && configuredPath.length > 0 ? configuredPath : "data/pomlist-db.json";
+  return path.isAbsolute(relativePath) ? relativePath : path.resolve(process.cwd(), relativePath);
+}
+
+async function ensureDirectoryForDatabaseFile(filePath: string): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+}
+
+function hydrateState(value: unknown): LocalDatabaseState {
+  if (!isObject(value)) {
+    return emptyState();
+  }
+
+  return {
+    version: DATABASE_VERSION,
+    users: Array.isArray(value.users) ? (value.users as LocalUserRow[]) : [],
+    tokens: Array.isArray(value.tokens) ? (value.tokens as LocalAccessTokenRow[]) : [],
+    todos: Array.isArray(value.todos) ? (value.todos as DbTodoRow[]) : [],
+    focus_sessions: Array.isArray(value.focus_sessions) ? (value.focus_sessions as DbFocusSessionRow[]) : [],
+    session_task_refs: Array.isArray(value.session_task_refs)
+      ? (value.session_task_refs as DbSessionTaskRefRow[])
+      : [],
+  };
+}
+
+async function writeState(state: LocalDatabaseState): Promise<void> {
+  const filePath = resolveDatabasePath();
+  await ensureDirectoryForDatabaseFile(filePath);
+
+  const tempPath = `${filePath}.tmp`;
+  const payload = JSON.stringify(state, null, 2);
+  await fs.writeFile(tempPath, payload, "utf8");
+  await fs.rename(tempPath, filePath);
+}
+
+async function readState(): Promise<LocalDatabaseState> {
+  const filePath = resolveDatabasePath();
+  await ensureDirectoryForDatabaseFile(filePath);
+
+  try {
+    const text = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(text) as unknown;
+    return hydrateState(parsed);
+  } catch (error) {
+    const maybeNodeError = error as NodeJS.ErrnoException;
+    if (maybeNodeError.code !== "ENOENT") {
+      throw error;
+    }
+
+    const initial = emptyState();
+    await writeState(initial);
+    return initial;
+  }
+}
+
+async function runSerialized<T>(task: () => Promise<T>): Promise<T> {
+  const scheduled = operationQueue.then(task, task) as Promise<T>;
+  operationQueue = scheduled.then(
+    () => undefined,
+    () => undefined,
+  );
+  return scheduled;
+}
+
+async function withState<T>(write: boolean, task: (state: LocalDatabaseState) => Promise<T> | T): Promise<T> {
+  return runSerialized(async () => {
+    const state = await readState();
+    const result = await task(state);
+    if (write) {
+      await writeState(state);
+    }
+    return result;
+  });
+}
+
+function isTokenExpired(token: LocalAccessTokenRow): boolean {
+  return Date.parse(token.expires_at) <= Date.now();
+}
+
+function findUserByToken(state: LocalDatabaseState, tokenValue: string | undefined): LocalUserRow | null {
+  if (!tokenValue) {
+    return null;
+  }
+
+  const token = state.tokens.find((item) => item.token === tokenValue);
+  if (!token || isTokenExpired(token)) {
+    return null;
+  }
+
+  return state.users.find((item) => item.id === token.user_id) ?? null;
+}
+
+function createUserSession(state: LocalDatabaseState, user: LocalUserRow): SupabaseAuthPayload {
+  const createdAt = nowIso();
+  const expiresAt = new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString();
+  const token = createAccessTokenValue();
+
+  state.tokens.push({
+    token,
+    user_id: user.id,
+    created_at: createdAt,
+    expires_at: expiresAt,
+  });
+
+  return {
+    access_token: token,
+    refresh_token: undefined,
+    expires_in: TOKEN_TTL_SECONDS,
+    token_type: "bearer",
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  };
+}
+
+function success<T>(data: T, status = 200): SupabaseResult<T> {
+  return {
+    data,
+    error: null,
+    status,
+  };
+}
+
+function failure<T>(
+  status: number,
+  message: string,
+  code?: string,
+  details?: string,
+  hint?: string,
+): SupabaseResult<T> {
+  return {
+    data: null,
+    error: {
+      ...(code ? { code } : {}),
+      message,
+      ...(details ? { details } : {}),
+      ...(hint ? { hint } : {}),
+    },
+    status,
+  };
+}
+
+function parseLiteral(value: string): unknown {
+  if (value === "null") {
+    return null;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isNaN(parsed) && value.trim() !== "") {
+    return parsed;
   }
 
   return value;
 }
 
-function normalizeBaseUrl(rawUrl: string): string {
-  return rawUrl.endsWith("/") ? rawUrl.slice(0, -1) : rawUrl;
-}
-
-function buildUrl(
-  baseUrl: string,
-  path: string,
-  query?: Record<string, string | number | boolean | undefined>,
-): string {
-  const url = new URL(path, baseUrl);
-
-  if (!query) {
-    return url.toString();
+function valuesEqual(left: unknown, right: unknown): boolean {
+  if (left === right) {
+    return true;
   }
 
-  Object.entries(query).forEach(([key, value]) => {
-    if (value === undefined) {
-      return;
+  if (typeof left === "number" && typeof right === "string") {
+    return Number.isFinite(Number(right)) && left === Number(right);
+  }
+  if (typeof left === "string" && typeof right === "number") {
+    return Number.isFinite(Number(left)) && Number(left) === right;
+  }
+
+  return false;
+}
+
+function toComparable(value: unknown): string | number | null {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const timestamp = Date.parse(value);
+    if (!Number.isNaN(timestamp) && value.includes("T")) {
+      return timestamp;
+    }
+    return value;
+  }
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+  return null;
+}
+
+function compareWithOperator(left: unknown, operator: "gte" | "gt" | "lte" | "lt", right: unknown): boolean {
+  const comparableLeft = toComparable(left);
+  const comparableRight = toComparable(right);
+  if (comparableLeft === null || comparableRight === null) {
+    return false;
+  }
+
+  if (operator === "gte") {
+    return comparableLeft >= comparableRight;
+  }
+  if (operator === "gt") {
+    return comparableLeft > comparableRight;
+  }
+  if (operator === "lte") {
+    return comparableLeft <= comparableRight;
+  }
+  return comparableLeft < comparableRight;
+}
+
+function matchesFilterValue(rowValue: unknown, rawFilter: string): boolean {
+  if (rawFilter.startsWith("eq.")) {
+    return valuesEqual(rowValue, parseLiteral(rawFilter.slice(3)));
+  }
+
+  if (rawFilter.startsWith("in.(") && rawFilter.endsWith(")")) {
+    const inner = rawFilter.slice(4, -1);
+    if (inner.trim() === "") {
+      return false;
     }
 
-    url.searchParams.set(key, String(value));
-  });
-
-  return url.toString();
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function toSupabaseError(payload: unknown, statusText: string): SupabaseErrorPayload {
-  if (isObject(payload)) {
-    const code = typeof payload.code === "string" ? payload.code : undefined;
-    const message =
-      typeof payload.message === "string"
-        ? payload.message
-        : typeof payload.error_description === "string"
-          ? payload.error_description
-          : typeof payload.error === "string"
-            ? payload.error
-            : `Supabase 请求失败：${statusText}`;
-    const details = typeof payload.details === "string" ? payload.details : undefined;
-    const hint = typeof payload.hint === "string" ? payload.hint : undefined;
-
-    return { code, message, details, hint };
+    const candidates = inner.split(",").map((item) => parseLiteral(item.trim()));
+    return candidates.some((candidate) => valuesEqual(rowValue, candidate));
   }
 
-  return { message: `Supabase 请求失败：${statusText}` };
+  for (const operator of ["gte", "gt", "lte", "lt"] as const) {
+    const prefix = `${operator}.`;
+    if (!rawFilter.startsWith(prefix)) {
+      continue;
+    }
+
+    return compareWithOperator(rowValue, operator, parseLiteral(rawFilter.slice(prefix.length)));
+  }
+
+  return valuesEqual(rowValue, parseLiteral(rawFilter));
 }
 
-async function parseResponsePayload(response: Response): Promise<unknown> {
-  if (response.status === 204) {
+function matchesAndClause(row: Record<string, unknown>, rawClause: string): boolean {
+  const trimmed = rawClause.trim();
+  if (trimmed === "") {
+    return true;
+  }
+
+  const normalized = trimmed.startsWith("(") && trimmed.endsWith(")") ? trimmed.slice(1, -1) : trimmed;
+  const segments = normalized
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  return segments.every((segment) => {
+    const firstDot = segment.indexOf(".");
+    const secondDot = segment.indexOf(".", firstDot + 1);
+    if (firstDot <= 0 || secondDot <= firstDot + 1) {
+      return false;
+    }
+
+    const fieldName = segment.slice(0, firstDot);
+    const operator = segment.slice(firstDot + 1, secondDot);
+    const value = segment.slice(secondDot + 1);
+    return matchesFilterValue(row[fieldName], `${operator}.${value}`);
+  });
+}
+
+function matchesQuery(row: Record<string, unknown>, query?: Record<string, string | number | boolean | undefined>): boolean {
+  if (!query) {
+    return true;
+  }
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    if (key === "select" || key === "order" || key === "limit" || key === "offset" || key === "and") {
+      continue;
+    }
+
+    const raw = typeof value === "string" ? value : String(value);
+    if (!matchesFilterValue(row[key], raw)) {
+      return false;
+    }
+  }
+
+  if (typeof query.and === "string" && !matchesAndClause(row, query.and)) {
+    return false;
+  }
+
+  return true;
+}
+
+function applyQuery(rows: LocalTableRow[], query?: Record<string, string | number | boolean | undefined>): LocalTableRow[] {
+  let output = rows.filter((row) => matchesQuery(row as unknown as Record<string, unknown>, query));
+
+  const order = typeof query?.order === "string" ? query.order : null;
+  if (order) {
+    const [field, direction = "asc"] = order.split(".");
+    const descending = direction.toLowerCase() === "desc";
+
+    output = [...output].sort((left, right) => {
+      const leftValue = toComparable((left as unknown as Record<string, unknown>)[field]);
+      const rightValue = toComparable((right as unknown as Record<string, unknown>)[field]);
+
+      if (leftValue === rightValue) {
+        return 0;
+      }
+      if (leftValue === null) {
+        return descending ? 1 : -1;
+      }
+      if (rightValue === null) {
+        return descending ? -1 : 1;
+      }
+      if (leftValue > rightValue) {
+        return descending ? -1 : 1;
+      }
+      return descending ? 1 : -1;
+    });
+  }
+
+  const limitRaw = query?.limit;
+  if (limitRaw !== undefined) {
+    const limitValue = Number(limitRaw);
+    if (Number.isFinite(limitValue) && limitValue >= 0) {
+      output = output.slice(0, Math.floor(limitValue));
+    }
+  }
+
+  return output;
+}
+
+function projectRows(rows: LocalTableRow[], select: string | number | boolean | undefined): unknown[] {
+  if (typeof select !== "string" || select.trim() === "" || select === "*") {
+    return rows.map((row) => ({ ...row }));
+  }
+
+  const columns = select
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  if (columns.length === 0 || columns.includes("*")) {
+    return rows.map((row) => ({ ...row }));
+  }
+
+  return rows.map((row) => {
+    const source = row as unknown as Record<string, unknown>;
+    const projected: Record<string, unknown> = {};
+    for (const column of columns) {
+      if (Object.prototype.hasOwnProperty.call(source, column)) {
+        projected[column] = source[column];
+      }
+    }
+    return projected;
+  });
+}
+
+function isSupportedTable(table: string): table is LocalTable {
+  return table === "todos" || table === "focus_sessions" || table === "session_task_refs";
+}
+
+function getTableRows(state: LocalDatabaseState, table: LocalTable): LocalTableRow[] {
+  if (table === "todos") {
+    return state.todos;
+  }
+  if (table === "focus_sessions") {
+    return state.focus_sessions;
+  }
+  return state.session_task_refs;
+}
+
+function replaceTableRows(state: LocalDatabaseState, table: LocalTable, rows: LocalTableRow[]): void {
+  if (table === "todos") {
+    state.todos = rows as DbTodoRow[];
+    return;
+  }
+  if (table === "focus_sessions") {
+    state.focus_sessions = rows as DbFocusSessionRow[];
+    return;
+  }
+  state.session_task_refs = rows as DbSessionTaskRefRow[];
+}
+
+function normalizeUpdatePayload(value: unknown): Record<string, unknown> | null {
+  if (!isObject(value)) {
     return null;
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    return response.json();
+  const updates: Record<string, unknown> = { ...value };
+  delete updates.id;
+  delete updates.user_id;
+  delete updates.created_at;
+  return updates;
+}
+
+function toRecordArray(value: unknown): Record<string, unknown>[] | null {
+  if (Array.isArray(value)) {
+    const rows = value.filter((item): item is Record<string, unknown> => isObject(item));
+    return rows.length === value.length ? rows : null;
   }
 
-  const text = await response.text();
-  return text === "" ? null : text;
+  if (isObject(value)) {
+    return [value];
+  }
+
+  return null;
+}
+
+function buildTodoRow(userId: string, payload: Record<string, unknown>, timestamp: string): DbTodoRow {
+  const priority = Math.max(1, Math.min(3, Math.round(toFiniteNumber(payload.priority, 2))));
+  const dueAt = toNullableString(payload.due_at);
+  const status = isTodoStatus(payload.status) ? payload.status : "pending";
+  const completedAt = toNullableString(payload.completed_at);
+
+  return {
+    id: randomUUID(),
+    user_id: userId,
+    title: typeof payload.title === "string" ? payload.title : "",
+    subject: toNullableString(payload.subject),
+    notes: toNullableString(payload.notes),
+    priority: priority as 1 | 2 | 3,
+    due_at: dueAt,
+    status,
+    completed_at: completedAt,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+}
+
+function buildFocusSessionRow(userId: string, payload: Record<string, unknown>, timestamp: string): DbFocusSessionRow {
+  return {
+    id: randomUUID(),
+    user_id: userId,
+    state: payload.state === "ended" ? "ended" : "active",
+    started_at: typeof payload.started_at === "string" ? payload.started_at : timestamp,
+    ended_at: toNullableString(payload.ended_at),
+    elapsed_seconds: Math.max(0, Math.floor(toFiniteNumber(payload.elapsed_seconds, 0))),
+    total_task_count: Math.max(0, Math.floor(toFiniteNumber(payload.total_task_count, 0))),
+    completed_task_count: Math.max(0, Math.floor(toFiniteNumber(payload.completed_task_count, 0))),
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+}
+
+function buildSessionTaskRefRow(userId: string, payload: Record<string, unknown>, timestamp: string): DbSessionTaskRefRow {
+  return {
+    id: randomUUID(),
+    user_id: userId,
+    session_id: typeof payload.session_id === "string" ? payload.session_id : "",
+    todo_id: typeof payload.todo_id === "string" ? payload.todo_id : "",
+    title_snapshot: typeof payload.title_snapshot === "string" ? payload.title_snapshot : "",
+    order_index: Math.max(0, Math.floor(toFiniteNumber(payload.order_index, 0))),
+    is_completed_in_session: toBoolean(payload.is_completed_in_session),
+    completed_at: toNullableString(payload.completed_at),
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
 }
 
 export function getSupabaseEnv(options?: { requireServiceRole?: boolean }): SupabaseEnv {
-  const url = ensureEnv(
-    "NEXT_PUBLIC_SUPABASE_URL 或 SUPABASE_URL",
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL,
-  );
-  const anonKey = ensureEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const serviceRoleKey = options?.requireServiceRole
-    ? ensureEnv("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY)
-    : process.env.SUPABASE_SERVICE_ROLE_KEY;
-
+  void options;
   return {
-    url: normalizeBaseUrl(url),
-    anonKey,
-    serviceRoleKey,
+    url: "local://pomlist",
+    anonKey: "local",
+    serviceRoleKey: "local",
   };
 }
 
 export class SupabaseHttpClient {
-  private readonly baseUrl: string;
-  private readonly apiKey: string;
   private readonly accessToken?: string;
 
-  constructor(config: SupabaseClientConfig) {
-    this.baseUrl = normalizeBaseUrl(config.url);
-    this.apiKey = config.apiKey;
+  constructor(config: SupabaseClientConfig = {}) {
     this.accessToken = config.accessToken;
   }
 
-  private buildHeaders(hasBody: boolean, prefer?: string): HeadersInit {
-    const headers: Record<string, string> = {
-      apikey: this.apiKey,
-      Authorization: `Bearer ${this.accessToken ?? this.apiKey}`,
-    };
-
-    if (hasBody) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    if (prefer) {
-      headers.Prefer = prefer;
-    }
-
-    return headers;
-  }
-
-  private async request<T>(request: SupabaseRequest): Promise<SupabaseResult<T>> {
-    const url = buildUrl(this.baseUrl, request.path, request.query);
-    const hasBody = request.body !== undefined;
-
-    const response = await fetch(url, {
-      method: request.method,
-      headers: this.buildHeaders(hasBody, request.prefer),
-      body: hasBody ? JSON.stringify(request.body) : undefined,
-      cache: "no-store",
-    });
-
-    const payload = await parseResponsePayload(response);
-
-    if (!response.ok) {
-      return {
-        data: null,
-        error: toSupabaseError(payload, response.statusText),
-        status: response.status,
-      };
-    }
-
-    return {
-      data: payload as T,
-      error: null,
-      status: response.status,
-    };
-  }
-
   auth = {
-    signUp: (email: string, password: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
-      this.request<SupabaseAuthPayload>({
-        method: "POST",
-        path: "/auth/v1/signup",
-        body: { email, password },
+    signUp: async (email: string, password: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
+      withState(true, async (state) => {
+        const normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail === "" || password.trim() === "") {
+          return failure<SupabaseAuthPayload>(400, "邮箱和密码不能为空");
+        }
+
+        const existing = state.users.find((item) => item.email === normalizedEmail);
+        if (existing) {
+          return failure<SupabaseAuthPayload>(409, "该邮箱已注册", "USER_ALREADY_EXISTS");
+        }
+
+        const timestamp = nowIso();
+        const salt = randomBytes(16).toString("hex");
+        const user: LocalUserRow = {
+          id: randomUUID(),
+          email: normalizedEmail,
+          password_salt: salt,
+          password_hash: hashPassword(password, salt),
+          created_at: timestamp,
+          updated_at: timestamp,
+        };
+        state.users.push(user);
+
+        const payload = createUserSession(state, user);
+        return success(payload, 200);
       }),
 
-    signIn: (email: string, password: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
-      this.request<SupabaseAuthPayload>({
-        method: "POST",
-        path: "/auth/v1/token",
-        query: { grant_type: "password" },
-        body: { email, password },
+    signIn: async (email: string, password: string): Promise<SupabaseResult<SupabaseAuthPayload>> =>
+      withState(true, async (state) => {
+        const normalizedEmail = normalizeEmail(email);
+        const user = state.users.find((item) => item.email === normalizedEmail);
+        if (!user || !verifyPassword(password, user.password_salt, user.password_hash)) {
+          return failure<SupabaseAuthPayload>(401, "邮箱或密码错误", "INVALID_LOGIN");
+        }
+
+        const payload = createUserSession(state, user);
+        return success(payload, 200);
       }),
 
-    signOut: (): Promise<SupabaseResult<Record<string, never>>> =>
-      this.request<Record<string, never>>({
-        method: "POST",
-        path: "/auth/v1/logout",
+    signOut: async (): Promise<SupabaseResult<Record<string, never>>> =>
+      withState(true, async (state) => {
+        if (!this.accessToken) {
+          return failure<Record<string, never>>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        state.tokens = state.tokens.filter((item) => item.token !== this.accessToken);
+        return success<Record<string, never>>({} as Record<string, never>, 200);
       }),
 
-    getUser: (): Promise<SupabaseResult<SupabaseUserPayload>> =>
-      this.request<SupabaseUserPayload>({
-        method: "GET",
-        path: "/auth/v1/user",
+    getUser: async (): Promise<SupabaseResult<SupabaseUserPayload>> =>
+      withState(false, async (state) => {
+        const user = findUserByToken(state, this.accessToken);
+        if (!user) {
+          return failure<SupabaseUserPayload>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        return success<SupabaseUserPayload>(
+          {
+            user: {
+              id: user.id,
+              email: user.email,
+            },
+          },
+          200,
+        );
       }),
   };
 
-  rest<T>(request: SupabaseRestRequest): Promise<SupabaseResult<T>> {
+  async rest<T>(request: SupabaseRestRequest): Promise<SupabaseResult<T>> {
     const method = request.method ?? "GET";
-    const prefer = request.prefer ?? (method === "GET" ? undefined : "return=representation");
+    const tableName = request.table;
 
-    return this.request<T>({
-      method,
-      path: `/rest/v1/${request.table}`,
-      query: request.query,
-      body: request.body,
-      prefer,
-    });
+    if (!isSupportedTable(tableName)) {
+      return failure<T>(404, `未找到数据表：${tableName}`, "TABLE_NOT_FOUND");
+    }
+
+    if (method === "GET") {
+      return withState(false, async (state) => {
+        const user = findUserByToken(state, this.accessToken);
+        if (!user) {
+          return failure<T>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        const allRows = getTableRows(state, tableName).filter((row) => row.user_id === user.id);
+        const selectedRows = applyQuery(allRows, request.query);
+        return success(projectRows(selectedRows, request.query?.select) as T, 200);
+      });
+    }
+
+    if (method === "POST") {
+      return withState(true, async (state) => {
+        const user = findUserByToken(state, this.accessToken);
+        if (!user) {
+          return failure<T>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        const payloadList = toRecordArray(request.body);
+        if (!payloadList || payloadList.length === 0) {
+          return failure<T>(400, "请求体必须是对象或对象数组", "BAD_REQUEST");
+        }
+
+        const timestamp = nowIso();
+        let insertedRows: LocalTableRow[] = [];
+
+        if (tableName === "todos") {
+          const [payload] = payloadList;
+          insertedRows = [buildTodoRow(user.id, payload, timestamp)];
+          state.todos.push(insertedRows[0] as DbTodoRow);
+        } else if (tableName === "focus_sessions") {
+          const [payload] = payloadList;
+          const isActive = payload.state === "active" || payload.state === undefined;
+          if (isActive) {
+            const activeExists = state.focus_sessions.some((row) => row.user_id === user.id && row.state === "active");
+            if (activeExists) {
+              return failure<T>(
+                409,
+                "duplicate key value violates unique constraint",
+                "23505",
+                "focus_sessions_one_active_per_user_idx",
+              );
+            }
+          }
+
+          insertedRows = [buildFocusSessionRow(user.id, payload, timestamp)];
+          state.focus_sessions.push(insertedRows[0] as DbFocusSessionRow);
+        } else {
+          const refRows = payloadList.map((payload) => buildSessionTaskRefRow(user.id, payload, timestamp));
+          if (refRows.some((row) => row.session_id === "" || row.todo_id === "")) {
+            return failure<T>(400, "session_task_refs 缺少 session_id 或 todo_id", "BAD_REQUEST");
+          }
+          insertedRows = refRows;
+          state.session_task_refs.push(...refRows);
+        }
+
+        return success(projectRows(insertedRows, request.query?.select) as T, 201);
+      });
+    }
+
+    if (method === "PATCH") {
+      return withState(true, async (state) => {
+        const user = findUserByToken(state, this.accessToken);
+        if (!user) {
+          return failure<T>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        const updates = normalizeUpdatePayload(request.body);
+        if (!updates || Object.keys(updates).length === 0) {
+          return failure<T>(400, "更新内容不能为空", "BAD_REQUEST");
+        }
+
+        const rows = getTableRows(state, tableName);
+        const timestamp = nowIso();
+        const matchedRows: LocalTableRow[] = [];
+
+        for (const row of rows) {
+          if (row.user_id !== user.id) {
+            continue;
+          }
+          if (!matchesQuery(row as unknown as Record<string, unknown>, request.query)) {
+            continue;
+          }
+
+          Object.assign(row as unknown as Record<string, unknown>, updates);
+          row.updated_at = timestamp;
+          matchedRows.push({ ...row });
+        }
+
+        return success(projectRows(matchedRows, request.query?.select) as T, 200);
+      });
+    }
+
+    if (method === "DELETE") {
+      return withState(true, async (state) => {
+        const user = findUserByToken(state, this.accessToken);
+        if (!user) {
+          return failure<T>(401, "登录状态已失效", "UNAUTHORIZED");
+        }
+
+        const rows = getTableRows(state, tableName);
+        const keptRows: LocalTableRow[] = [];
+        const deletedRows: LocalTableRow[] = [];
+
+        for (const row of rows) {
+          if (row.user_id !== user.id) {
+            keptRows.push(row);
+            continue;
+          }
+
+          if (matchesQuery(row as unknown as Record<string, unknown>, request.query)) {
+            deletedRows.push({ ...row });
+          } else {
+            keptRows.push(row);
+          }
+        }
+
+        replaceTableRows(state, tableName, keptRows);
+        return success(projectRows(deletedRows, request.query?.select) as T, 200);
+      });
+    }
+
+    return failure<T>(405, `不支持的方法：${method}`, "METHOD_NOT_ALLOWED");
   }
 
   rpc<T>(request: SupabaseRpcRequest): Promise<SupabaseResult<T>> {
-    return this.request<T>({
-      method: "POST",
-      path: `/rest/v1/rpc/${request.fn}`,
-      query: request.query,
-      body: request.body ?? {},
-    });
+    void request;
+    return Promise.resolve(failure<T>(501, "本地模式暂不支持 RPC 调用", "RPC_NOT_IMPLEMENTED"));
   }
 }
