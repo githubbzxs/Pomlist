@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-content: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --bg-main: #fff7ed;
   --bg-accent: #eff6ff;
   --surface-1: rgba(255, 255, 255, 0.86);
