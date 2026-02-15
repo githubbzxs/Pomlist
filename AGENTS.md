@@ -482,3 +482,27 @@
   - Why：本轮变更涉及主导航手势与统计页恢复，需在线验证。
   - Impact：大陆机 `C:\www\pomlist`，进程 `pomlist`（PM2 id 11）。
   - Verify：`git rev-parse --short HEAD` 为 `352381b`；`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
+
+## Decisions（增量）
+
+- **[2026-02-15] 字体回退为文楷**：移除浅色主题对 SF Pro 的字体覆盖，统一恢复到文楷字体栈。
+  - Why：按最新视觉要求“字体改回文楷体”。
+  - Impact：`app/globals.css`。
+  - Verify：全站标题与正文均使用 `LXGW WenKai / 霞鹜文楷` 字体族。
+
+- **[2026-02-15] 英文大标题副文案清理**：移除 `Task / History / Statistic` 标题下的小中文字。
+  - Why：按最新要求去掉英文主标题下方的小中文说明。
+  - Impact：`app/today/page.tsx`。
+  - Verify：`today` 页面三个英文主标题下不再显示小中文字。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：改动已推送并完成大陆测试机重部署。
+- **[2026-02-15] 下一步**：如需，我可以继续按你的参考图微调标题行间距与字重。
+
+## Decisions（增量）
+
+- **[2026-02-15] 大陆机重部署完成（字体与文案清理）**：按 `pm2 delete -> rmdir node_modules/.next -> npm ci -> npm run build -> pm2 start` 流程发布。
+  - Why：该改动影响首页主视觉，需在测试机验收实际显示。
+  - Impact：大陆机 `C:\www\pomlist`，进程 `pomlist`（PM2 id 12）。
+  - Verify：`git rev-parse --short HEAD` 为 `3e275b4`；`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
