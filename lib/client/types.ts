@@ -91,7 +91,7 @@ export type TrendPoint = {
 };
 
 export type DistributionBucket = {
-  bucketLabel: "0-15 分钟" | "15-30 分钟" | "30-45 分钟" | "45+ 分钟";
+  bucketLabel: string;
   sessionCount: number;
   totalDurationSeconds: number;
 };

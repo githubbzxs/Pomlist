@@ -1,12 +1,11 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { FeedbackState } from "@/components/feedback-state";
 import { ApiClientError } from "@/lib/client/api-client";
 import {
   getDashboardMetrics,
-  getDistributionData,
 } from "@/lib/client/pomlist-api";
 import type { DashboardMetrics, DistributionBucket } from "@/lib/client/types";
 
@@ -40,18 +39,24 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
-  const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
+  const timeDistribution = useMemo<DistributionBucket[]>(
+    () =>
+      (metrics.hourlyDistribution ?? [])
+        .filter((item) => item.sessionCount > 0 || item.totalDurationSeconds > 0)
+        .map((item) => ({
+          bucketLabel: `${String(item.hour).padStart(2, "0")}:00`,
+          sessionCount: item.sessionCount,
+          totalDurationSeconds: item.totalDurationSeconds,
+        })),
+    [metrics.hourlyDistribution],
+  );
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [dashboardData, distributionData] = await Promise.all([
-        getDashboardMetrics(),
-        getDistributionData(30),
-      ]);
+      const dashboardData = await getDashboardMetrics();
       setMetrics(dashboardData);
-      setDistribution(distributionData);
     } catch (loadError) {
       setError(errorToText(loadError));
     } finally {
@@ -114,10 +119,10 @@ export default function AnalyticsPage() {
       </section>
 
       <section className="glass-card-panel mt-4">
-        <h2 className="page-title text-xl font-bold text-main">近 30 天分布</h2>
-        <p className="stats-section-subtitle">按任务钟时长分桶统计</p>
+        <h2 className="page-title text-xl font-bold text-main">时间分布</h2>
+        <p className="stats-section-subtitle">按一天内时段统计任务钟时长</p>
         <div className="mt-3">
-          <DistributionChart buckets={distribution} />
+          <DistributionChart buckets={timeDistribution} />
         </div>
       </section>
     </div>

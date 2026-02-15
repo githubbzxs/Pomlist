@@ -14,7 +14,6 @@ import {
   endSession,
   getActiveSession,
   getDashboardMetrics,
-  getDistributionData,
   listTodos,
   startSession,
   toggleSessionTask,
@@ -229,7 +228,6 @@ export default function TodayPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [dashboard, setDashboard] = useState<DashboardMetrics>(EMPTY_DASHBOARD);
-  const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [session, setSession] = useState<ActiveSession | null>(null);
   const [lastEndedSeconds, setLastEndedSeconds] = useState<number | null>(null);
@@ -400,6 +398,17 @@ export default function TodayPage() {
   const categoryStats = dashboard.categoryStats ?? [];
   const hourlyDistribution = dashboard.hourlyDistribution ?? [];
   const efficiency = dashboard.efficiency ?? EMPTY_EFFICIENCY;
+  const timeDistribution = useMemo<DistributionBucket[]>(
+    () =>
+      hourlyDistribution
+        .filter((item) => item.sessionCount > 0 || item.totalDurationSeconds > 0)
+        .map((item) => ({
+          bucketLabel: `${String(item.hour).padStart(2, "0")}:00`,
+          sessionCount: item.sessionCount,
+          totalDurationSeconds: item.totalDurationSeconds,
+        })),
+    [hourlyDistribution],
+  );
 
   const loadData = useCallback(async (mode: LoadMode) => {
     if (mode === "initial") {
@@ -411,20 +420,17 @@ export default function TodayPage() {
       getDashboardMetrics(),
       getActiveSession(),
       listTodos(),
-      getDistributionData(30),
     ]);
 
-    const [dashboardResult, sessionResult, todoResult, distributionResult] = results;
+    const [dashboardResult, sessionResult, todoResult] = results;
 
     const nextDashboard = dashboardResult.status === "fulfilled" ? dashboardResult.value : EMPTY_DASHBOARD;
     const nextSession = sessionResult.status === "fulfilled" ? sessionResult.value : null;
     const nextTodos = todoResult.status === "fulfilled" ? todoResult.value : [];
-    const nextDistribution = distributionResult.status === "fulfilled" ? distributionResult.value : [];
 
     setDashboard(nextDashboard);
     setSession(nextSession);
     setTodos(nextTodos);
-    setDistribution(nextDistribution);
 
     const pendingIds = new Set(nextTodos.filter((todo) => todo.status === "pending").map((todo) => todo.id));
 
@@ -1323,9 +1329,9 @@ export default function TodayPage() {
       </section>
 
       <section className="mobile-card glass-card-panel glass-chart">
-        <h3 className="page-title text-lg font-bold text-main">30 天分布</h3>
+        <h3 className="page-title text-lg font-bold text-main">时间分布</h3>
         <div className="mt-3">
-          <DistributionChart buckets={distribution} />
+          <DistributionChart buckets={timeDistribution} />
         </div>
       </section>
     </div>

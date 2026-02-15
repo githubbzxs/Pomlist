@@ -8,7 +8,7 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
   if (buckets.length === 0) {
     return (
       <div className="glass-chart-wrap chart-empty">
-        <p>暂无 30 天分布数据</p>
+        <p>暂无时间分布数据</p>
       </div>
     );
   }
