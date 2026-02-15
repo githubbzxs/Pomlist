@@ -572,10 +572,27 @@ button {
 
 .mobile-main-timer {
   text-align: center;
+  transform-origin: top center;
+  will-change: opacity, transform, filter;
 }
 
 .mobile-main-timer .timer-display {
   text-shadow: 0 8px 28px rgba(37, 99, 235, 0.28);
+}
+
+.mobile-main-timer.is-enter {
+  animation: top-progress-enter var(--dur-mid) var(--ease-emphasized) both;
+}
+
+.mobile-main-timer.is-stable {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.mobile-main-timer.is-exit {
+  animation: top-progress-exit 320ms var(--ease-standard) both;
+  pointer-events: none;
 }
 
 .mobile-main-divider {
@@ -1405,6 +1422,34 @@ button {
   justify-content: center;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+@keyframes top-progress-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px);
+    filter: blur(6px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes top-progress-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+    filter: blur(4px);
+  }
 }
 
 @keyframes ambient-drift {

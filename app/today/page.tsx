@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
 import { FeedbackState } from "@/components/feedback-state";
 import { AppCanvas, type CanvasPanel } from "@/components/mobile/app-canvas";
@@ -38,6 +38,14 @@ type DisplayTask = {
   completed: boolean;
 };
 
+type TopProgressSnapshot = {
+  completed: number;
+  total: number;
+  percent: number;
+};
+
+type TopProgressPhase = "enter" | "stable" | "exit";
+
 const DEFAULT_CATEGORY = "未分类";
 const DEFAULT_PRIMARY_TAG = "未标签";
 const TAG_REGISTRY_KEY = "pomlist.meta.tags";
@@ -45,6 +53,9 @@ const TAG_COLOR_REGISTRY_KEY = "pomlist.meta.tag-colors";
 const COMMON_TAG_COLORS = ["#2563eb", "#06b6d4", "#14b8a6", "#22c55e", "#eab308", "#f97316", "#ef4444", "#8b5cf6"];
 const DEFAULT_TAG_COLOR = COMMON_TAG_COLORS[0];
 const LEGACY_DEFAULT_TAG_COLOR = "#1d4ed8";
+const TOP_PROGRESS_LINGER_MS = 2000;
+const TOP_PROGRESS_ENTER_MS = 420;
+const TOP_PROGRESS_EXIT_MS = 320;
 
 const EMPTY_DASHBOARD: DashboardMetrics = {
   date: "",
@@ -286,9 +297,17 @@ export default function TodayPage() {
   const [taskEditorSaving, setTaskEditorSaving] = useState(false);
   const [taskEditorDeleting, setTaskEditorDeleting] = useState(false);
   const [taskEditorNotice, setTaskEditorNotice] = useState<string | null>(null);
+  const [showTopProgress, setShowTopProgress] = useState(false);
+  const [topProgressPhase, setTopProgressPhase] = useState<TopProgressPhase>("stable");
+  const [topProgressSnapshot, setTopProgressSnapshot] = useState<TopProgressSnapshot | null>(null);
 
   const [tickStartAt, setTickStartAt] = useState<Date | null>(null);
   const [tickSessionId, setTickSessionId] = useState<string | null>(null);
+  const wasSessionActiveRef = useRef(false);
+  const latestActiveProgressRef = useRef<TopProgressSnapshot>({ completed: 0, total: 0, percent: 0 });
+  const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lingerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const extraSeconds = useElapsedSeconds(tickStartAt);
 
   useEffect(() => {
@@ -374,6 +393,88 @@ export default function TodayPage() {
 
   const completedCount = useMemo(() => centerTasks.filter((task) => task.completed).length, [centerTasks]);
   const totalCount = centerTasks.length;
+  const isSessionActive = session?.state === "active";
+
+  useEffect(() => {
+    if (!isSessionActive) {
+      return;
+    }
+    latestActiveProgressRef.current = {
+      completed: completedCount,
+      total: totalCount,
+      percent: progressPercent(completedCount, totalCount),
+    };
+  }, [isSessionActive, completedCount, totalCount]);
+
+  useEffect(() => {
+    return () => {
+      if (enterTimerRef.current !== null) {
+        clearTimeout(enterTimerRef.current);
+      }
+      if (lingerTimerRef.current !== null) {
+        clearTimeout(lingerTimerRef.current);
+      }
+      if (exitTimerRef.current !== null) {
+        clearTimeout(exitTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isSessionActive) {
+      if (lingerTimerRef.current !== null) {
+        clearTimeout(lingerTimerRef.current);
+        lingerTimerRef.current = null;
+      }
+      if (exitTimerRef.current !== null) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+      setTopProgressSnapshot(null);
+      setShowTopProgress(true);
+      setTopProgressPhase("enter");
+      if (enterTimerRef.current !== null) {
+        clearTimeout(enterTimerRef.current);
+      }
+      enterTimerRef.current = setTimeout(() => {
+        setTopProgressPhase("stable");
+        enterTimerRef.current = null;
+      }, TOP_PROGRESS_ENTER_MS);
+      wasSessionActiveRef.current = true;
+      return;
+    }
+
+    if (!wasSessionActiveRef.current) {
+      setShowTopProgress(false);
+      return;
+    }
+
+    wasSessionActiveRef.current = false;
+    setTopProgressSnapshot(latestActiveProgressRef.current);
+    setShowTopProgress(true);
+    setTopProgressPhase("stable");
+    if (enterTimerRef.current !== null) {
+      clearTimeout(enterTimerRef.current);
+      enterTimerRef.current = null;
+    }
+    if (lingerTimerRef.current !== null) {
+      clearTimeout(lingerTimerRef.current);
+    }
+    if (exitTimerRef.current !== null) {
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    lingerTimerRef.current = setTimeout(() => {
+      setTopProgressPhase("exit");
+      lingerTimerRef.current = null;
+      exitTimerRef.current = setTimeout(() => {
+        setShowTopProgress(false);
+        setTopProgressSnapshot(null);
+        setTopProgressPhase("stable");
+        exitTimerRef.current = null;
+      }, TOP_PROGRESS_EXIT_MS);
+    }, TOP_PROGRESS_LINGER_MS);
+  }, [isSessionActive]);
 
   const tagOptions = useMemo(() => {
     const values = new Set<string>();
@@ -874,6 +975,15 @@ export default function TodayPage() {
     );
   }
 
+  const topProgressCompleted = isSessionActive ? completedCount : (topProgressSnapshot?.completed ?? 0);
+  const topProgressTotal = isSessionActive ? totalCount : (topProgressSnapshot?.total ?? 0);
+  const topProgressPercent = isSessionActive
+    ? progressPercent(completedCount, totalCount)
+    : (topProgressSnapshot?.percent ?? 0);
+  const topProgressVisible = showTopProgress && (isSessionActive || topProgressSnapshot !== null);
+  const topProgressClassName =
+    topProgressPhase === "enter" ? "is-enter" : topProgressPhase === "exit" ? "is-exit" : "is-stable";
+
   const centerPanel = (
     <div className="canvas-panel-content canvas-panel-content-home">
       <header className="canvas-panel-header">
@@ -881,18 +991,22 @@ export default function TodayPage() {
       </header>
 
       <section className="mobile-main-panel mobile-main-panel--frameless panel-glass-home panel-glass-stack grow">
-        <div className="mobile-main-timer">
-          {session ? null : lastEndedSeconds !== null ? (
-            <>
-              <p className="timer-display page-title">{formatClock(lastEndedSeconds)}</p>
-              <p className="mt-2 text-xs text-subtle">上次结束用时</p>
-            </>
-          ) : null}
-          <div className="progress-track mt-2">
-            <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
+        {topProgressVisible ? (
+          <div className={`mobile-main-timer ${topProgressClassName}`}>
+            {isSessionActive ? null : lastEndedSeconds !== null ? (
+              <>
+                <p className="timer-display page-title">{formatClock(lastEndedSeconds)}</p>
+                <p className="mt-2 text-xs text-subtle">上次结束用时</p>
+              </>
+            ) : null}
+            <div className="progress-track mt-2">
+              <div className="progress-fill" style={{ width: `${topProgressPercent}%` }} />
+            </div>
+            <p className="home-progress-summary page-title">
+              {topProgressCompleted}/{topProgressTotal}
+            </p>
           </div>
-          <p className="home-progress-summary page-title">{completedCount}/{totalCount}</p>
-        </div>
+        ) : null}
 
         <div className="mobile-main-divider panel-glass-divider" />
 
