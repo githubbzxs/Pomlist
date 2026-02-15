@@ -1008,8 +1008,6 @@ export default function TodayPage() {
           </div>
         ) : null}
 
-        <div className="mobile-main-divider panel-glass-divider" />
-
         <div className="mobile-main-task-area">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="page-title text-lg font-bold text-main">Tasks</h2>

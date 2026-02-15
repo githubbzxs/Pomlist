@@ -2067,12 +2067,13 @@ body {
 .canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-home {
   border: none;
   box-shadow: none;
-  border-radius: 1rem;
-  background: var(--glass-bg-strong);
+  border-radius: 0;
+  background: transparent;
 }
 
 .canvas-panel-content-home .canvas-panel-header {
-  background: rgba(7, 8, 11, 0.86);
+  background: transparent;
+  border-bottom: none;
 }
 
 .canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-stack::before,
