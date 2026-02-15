@@ -61,7 +61,7 @@ final class PLAuthService: AuthUnlocking {
                     }
 
                     if success {
-                        if let config = try? self.authConfig(), let config {
+                        if let config = try? self.authConfig() {
                             config.failedAttempts = 0
                             config.lastUnlockedAt = Date()
                             config.touch()

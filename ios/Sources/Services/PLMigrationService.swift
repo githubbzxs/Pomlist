@@ -50,10 +50,16 @@ final class PLMigrationService: MigrationImporting {
         }
 
         var report = PLMigrationReport.empty
+        let existingTodos = try context.fetch(FetchDescriptor<PLTodo>())
+        let existingSessions = try context.fetch(FetchDescriptor<PLFocusSession>())
+        let existingRefs = try context.fetch(FetchDescriptor<PLSessionTaskRef>())
+
+        var todoById = Dictionary(uniqueKeysWithValues: existingTodos.map { ($0.id, $0) })
+        var sessionById = Dictionary(uniqueKeysWithValues: existingSessions.map { ($0.id, $0) })
+        var refById = Dictionary(uniqueKeysWithValues: existingRefs.map { ($0.id, $0) })
 
         for todo in payload.todos {
-            let descriptor = FetchDescriptor<PLTodo>(predicate: #Predicate { $0.id == todo.id })
-            if let existing = try context.fetch(descriptor).first {
+            if let existing = todoById[todo.id] {
                 if existing.updatedAt <= todo.updatedAt {
                     apply(todo: todo, to: existing)
                     report.updatedTodos += 1
@@ -73,15 +79,15 @@ final class PLMigrationService: MigrationImporting {
                     updatedAt: todo.updatedAt
                 )
                 context.insert(entity)
+                todoById[todo.id] = entity
                 report.importedTodos += 1
             }
         }
 
         for session in payload.sessions {
-            let sessionDescriptor = FetchDescriptor<PLFocusSession>(predicate: #Predicate { $0.id == session.id })
             let sessionEntity: PLFocusSession
 
-            if let existing = try context.fetch(sessionDescriptor).first {
+            if let existing = sessionById[session.id] {
                 if existing.updatedAt <= session.updatedAt {
                     apply(session: session, to: existing)
                     report.updatedSessions += 1
@@ -102,12 +108,12 @@ final class PLMigrationService: MigrationImporting {
                 )
                 context.insert(entity)
                 sessionEntity = entity
+                sessionById[session.id] = entity
                 report.importedSessions += 1
             }
 
             for task in session.tasks {
-                let refDescriptor = FetchDescriptor<PLSessionTaskRef>(predicate: #Predicate { $0.id == task.id })
-                if let existingRef = try context.fetch(refDescriptor).first {
+                if let existingRef = refById[task.id] {
                     if existingRef.updatedAt <= task.updatedAt {
                         apply(task: task, to: existingRef)
                         existingRef.session = sessionEntity
@@ -127,6 +133,7 @@ final class PLMigrationService: MigrationImporting {
                     ref.session = sessionEntity
                     context.insert(ref)
                     sessionEntity.taskRefs.append(ref)
+                    refById[task.id] = ref
                     report.importedTaskRefs += 1
                 }
             }
