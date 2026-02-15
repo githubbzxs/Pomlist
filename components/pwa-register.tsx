@@ -1,10 +1,31 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 
 export function PWARegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {
+      return;
+    }
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (!isProduction) {
+      const cleanupDevServiceWorker = async () => {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+
+        if ("caches" in window) {
+          const cacheKeys = await caches.keys();
+          await Promise.all(
+            cacheKeys
+              .filter((key) => key.startsWith("pomlist-static"))
+              .map((key) => caches.delete(key)),
+          );
+        }
+      };
+
+      void cleanupDevServiceWorker();
       return;
     }
 

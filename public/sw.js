@@ -7,8 +7,14 @@ const STATIC_ASSETS = [
   "/icons/icon-192.svg",
   "/icons/icon-512.svg",
 ];
+const IS_LOCALHOST = ["localhost", "127.0.0.1"].includes(self.location.hostname);
 
 self.addEventListener("install", (event) => {
+  if (IS_LOCALHOST) {
+    self.skipWaiting();
+    return;
+  }
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
@@ -16,6 +22,20 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (IS_LOCALHOST) {
+    event.waitUntil(
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("pomlist-static"))
+            .map((key) => caches.delete(key)),
+        ),
+      ),
+    );
+    self.clients.claim();
+    return;
+  }
+
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
@@ -29,6 +49,10 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (IS_LOCALHOST) {
+    return;
+  }
+
   const { request } = event;
   if (request.method !== "GET") {
     return;
@@ -50,4 +74,3 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((cached) => cached || fetch(request)),
   );
 });
-

@@ -283,3 +283,15 @@
 
 - **[2026-02-15] 当前状态**：主页去框与视觉优化已完成，并通过本地 `lint/typecheck/build`。
 - **[2026-02-15] 下一步**：若需要，我可以继续把右侧 Task 页和下方 Statistic 页同步成同一套“无框”风格。
+
+## Decisions（增量）
+
+- **[2026-02-15] 本地 SW 保护**：开发环境自动注销 Service Worker 并清理 `pomlist-static` 缓存，`sw.js` 在 localhost 下不拦截导航请求。
+  - Why：避免本地 `localhost:3000/today` 被历史缓存误判为离线页。
+  - Impact：`components/pwa-register.tsx`、`public/sw.js`。
+  - Verify：本地刷新后不再出现“当前离线”回退；`npm run lint && npm run typecheck && npm run build` 通过。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：本地离线页误触发问题已修复，开发环境不再被 SW 接管。
+- **[2026-02-15] 下一步**：如需保留离线能力，仅在生产环境继续启用 SW。
