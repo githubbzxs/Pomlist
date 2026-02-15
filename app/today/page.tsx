@@ -1355,7 +1355,7 @@ export default function TodayPage() {
 
   return (
     <div className="mobile-page">
-      <section className="mobile-phone-frame mobile-phone-frame-home">
+      <section className="mobile-phone-frame">
         <AppCanvas panel={panel} onPanelChange={setPanel} center={centerPanel} right={rightPanel} down={downPanel} />
         <TaskPickerDrawer
           open={drawerOpen}

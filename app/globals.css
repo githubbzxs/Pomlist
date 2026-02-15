@@ -371,12 +371,6 @@ button {
   position: relative;
 }
 
-.mobile-phone-frame-home {
-  border: none;
-  box-shadow: none;
-  background: transparent;
-}
-
 .app-canvas {
   position: relative;
   width: 100%;
