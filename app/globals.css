@@ -1864,6 +1864,7 @@ body::after {
   --bg-0: #1c1c1e;
   --bg-1: #242428;
   --bg-2: #2b2b30;
+  --ios-secondary-bg: #2c2c2e;
 
   --glass-bg: rgba(16, 18, 22, 0.86);
   --glass-bg-strong: rgba(14, 16, 20, 0.94);
@@ -1979,6 +1980,21 @@ body {
 .canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-stack::before,
 .canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-home::after {
   display: none;
+}
+
+.canvas-panel-content-home .mobile-main-timer,
+.canvas-panel-content-home .mobile-main-task-area {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--ios-secondary-bg);
+  border-radius: 1rem;
+}
+
+.canvas-panel-content-home .mobile-main-timer {
+  padding: 0.78rem 0.85rem 0.68rem;
+}
+
+.canvas-panel-content-home .mobile-main-task-area {
+  padding: 0.68rem 0.82rem 0.72rem;
 }
 
 .home-task-item,
