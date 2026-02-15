@@ -451,3 +451,15 @@
 
 - **[2026-02-15] 当前状态**：两项需求已在本地完成并通过全量校验，等待大陆 VPS 重部署。
 - **[2026-02-15] 下一步**：按既定流程在大陆 VPS 执行重建并验收历史页展示。
+
+## Decisions（增量）
+
+- **[2026-02-15] 大陆机重部署完成（历史页改造）**：按 `pm2 delete -> rmdir node_modules/.next -> npm ci -> npm run build -> pm2 start` 流程完成发布。
+  - Why：本轮改动已涉及 `today` 主流程与新增接口，需按约定在测试 VPS 验收。
+  - Impact：大陆机 `C:\www\pomlist`，进程 `pomlist`（PM2 id 10）。
+  - Verify：`git rev-parse --short HEAD` 为 `47f0587`；`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：主页文案精简 + 上滑历史记录页已上线大陆测试机并回源正常。
+- **[2026-02-15] 下一步**：如需，我可以继续按你的参考图微调历史记录页卡片样式（密度、时间格式、字段顺序）。
