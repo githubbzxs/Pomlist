@@ -1498,3 +1498,358 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* 浅色苹果风主题覆盖 */
+:root {
+  --font-content: "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  --font-display: "SF Pro Display", "SF Pro Text", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+
+  --bg-0: #f5f5f7;
+  --bg-1: #eef1f5;
+  --bg-2: #e8edf4;
+
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-bg-strong: rgba(255, 255, 255, 0.94);
+  --glass-border: rgba(15, 23, 42, 0.1);
+  --glass-highlight: rgba(255, 255, 255, 0.74);
+
+  --text-strong: #111827;
+  --text-normal: #1f2937;
+  --text-muted: #6b7280;
+
+  --accent: #0a84ff;
+  --accent-strong: #0069d9;
+  --success: #16a34a;
+  --danger: #dc2626;
+
+  --shadow-xs: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 8px 20px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.1);
+  --shadow-lg: 0 24px 56px rgba(15, 23, 42, 0.12);
+
+  --bg-main: var(--bg-0);
+  --bg-accent: var(--bg-1);
+  --surface-1: var(--glass-bg);
+  --surface-2: var(--glass-bg-strong);
+  --text-main: var(--text-strong);
+  --text-subtle: var(--text-muted);
+  --line-soft: var(--glass-border);
+  --brand: var(--accent);
+  --brand-deep: var(--accent-strong);
+  --ok: var(--success);
+  --shadow-soft: var(--shadow-md);
+}
+
+html,
+body {
+  background-color: var(--bg-0);
+}
+
+body {
+  color: var(--text-strong);
+  background: var(--bg-0);
+}
+
+body::before,
+body::after {
+  display: none;
+}
+
+.panel,
+.panel-solid,
+.mobile-card,
+.panel-glass-stack,
+.glass-card-panel,
+.glass-metric,
+.glass-chart-wrap {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.panel::before,
+.panel-solid::before,
+.mobile-card::before,
+.panel-glass-stack::before,
+.glass-card-panel::before,
+.glass-metric::before,
+.glass-chart-wrap::before,
+.panel-glass-home::after,
+.mobile-phone-frame::before {
+  display: none;
+}
+
+.panel-solid {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.panel-glass-home,
+.panel-glass-task,
+.panel-glass-analytics {
+  border-color: var(--glass-border);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-glass-divider {
+  background: rgba(209, 213, 219, 0.86);
+}
+
+.panel-glass-footer {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: rgba(10, 132, 255, 0.42);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.28);
+}
+
+.btn-primary::before {
+  display: none;
+}
+
+.btn-primary:not(:disabled):hover {
+  background: var(--accent-strong);
+  box-shadow: 0 10px 24px rgba(10, 132, 255, 0.32);
+}
+
+.btn-muted {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: var(--text-normal);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-muted:hover {
+  border-color: rgba(10, 132, 255, 0.26);
+  background: #ffffff;
+}
+
+.btn-danger {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(254, 242, 242, 0.95);
+  color: #b91c1c;
+}
+
+.btn-danger:hover {
+  background: rgba(254, 226, 226, 0.95);
+}
+
+.input-base {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.input-base:focus {
+  border-color: rgba(10, 132, 255, 0.56);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.16);
+}
+
+.auth-passcode-input {
+  border-color: rgba(10, 132, 255, 0.34);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-strong);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.1),
+    inset 0 0 0 1px rgba(10, 132, 255, 0.1);
+  animation: none;
+}
+
+.auth-passcode-input:focus {
+  border-color: rgba(10, 132, 255, 0.72);
+  box-shadow:
+    0 0 0 3px rgba(10, 132, 255, 0.18),
+    0 14px 30px rgba(15, 23, 42, 0.12);
+}
+
+.auth-passcode-input-error {
+  border-color: rgba(239, 68, 68, 0.72);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14);
+}
+
+.auth-shell {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow-lg);
+}
+
+.mobile-phone-frame {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 28px 64px rgba(15, 23, 42, 0.14);
+}
+
+.canvas-panel-header {
+  background: rgba(245, 245, 247, 0.86);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.canvas-panel-content-home .canvas-panel-header {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+.mobile-main-divider {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.mobile-main-actions--floating {
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+.mobile-main-actions--floating .btn-muted {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.home-task-item,
+.md-task-item,
+.library-item,
+.glass-item,
+.focus-task-item,
+.todo-item,
+.meta-manager-row {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-xs);
+}
+
+.home-task-item:hover:not(:disabled),
+.md-task-item:hover:not(:disabled) {
+  border-color: rgba(10, 132, 255, 0.34);
+  background: #ffffff;
+}
+
+.home-task-item.is-checked,
+.md-task-item.is-checked {
+  background: rgba(10, 132, 255, 0.1);
+}
+
+.md-task-item.is-selected {
+  border-color: rgba(10, 132, 255, 0.52);
+  background: rgba(10, 132, 255, 0.14);
+}
+
+.md-task-checkbox {
+  border-color: rgba(15, 23, 42, 0.2);
+  background: #ffffff;
+}
+
+.md-task-checkbox.is-checked {
+  border-color: rgba(10, 132, 255, 0.6);
+  background: rgba(10, 132, 255, 0.22);
+}
+
+.progress-track {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.progress-fill {
+  background: var(--accent);
+}
+
+.progress-chip,
+.metric-badge {
+  color: #0a5bb8;
+  background: rgba(10, 132, 255, 0.14);
+  border-color: rgba(10, 132, 255, 0.32);
+}
+
+.task-pill,
+.glass-pill {
+  color: #0a5bb8;
+  border-color: rgba(10, 132, 255, 0.28);
+  background: rgba(10, 132, 255, 0.12);
+}
+
+.task-pill-tag {
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.24);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.category-chip {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-muted);
+}
+
+.category-chip.is-active {
+  color: #0a5bb8;
+  border-color: rgba(10, 132, 255, 0.36);
+  background: rgba(10, 132, 255, 0.14);
+}
+
+.app-inline-error {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: rgba(254, 242, 242, 0.9);
+  color: #b91c1c;
+}
+
+.app-inline-note {
+  border-color: rgba(10, 132, 255, 0.24);
+  background: rgba(239, 246, 255, 0.92);
+  color: #0c4a6e;
+}
+
+.task-picker-backdrop,
+.task-editor-backdrop,
+.meta-manager-backdrop {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.task-picker-drawer,
+.task-editor-sheet,
+.meta-manager-sheet {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(248, 250, 252, 0.95);
+  box-shadow: var(--shadow-lg);
+}
+
+.tag-input-shell {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.tag-input-shell:focus-within {
+  border-color: rgba(10, 132, 255, 0.56);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.16);
+}
+
+.tag-input-chip {
+  border-color: rgba(37, 99, 235, 0.24);
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.tag-input-draft {
+  color: var(--text-strong);
+}
+
+.tag-suggestion-btn {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-muted);
+}
+
+.meta-color-swatch {
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+.meta-color-swatch.is-active {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 0 0 3px rgba(10, 132, 255, 0.56);
+}
+
+@media (max-width: 420px) {
+  .mobile-phone-frame {
+    border: none;
+    box-shadow: none;
+  }
+}

@@ -313,7 +313,7 @@ export default function TodoPage() {
       <section className="panel p-4">
         <div className="todo-section-title">
           <h2 className="page-title text-xl font-bold text-main">已完成</h2>
-          <span className="rounded-full border border-[rgba(74,222,128,0.35)] bg-[rgba(34,197,94,0.2)] px-3 py-1 text-xs font-semibold text-emerald-200">
+          <span className="rounded-full border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.12)] px-3 py-1 text-xs font-semibold text-emerald-700">
             {completedTodos.length} 项
           </span>
         </div>

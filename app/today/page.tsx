@@ -1309,7 +1309,7 @@ export default function TodayPage() {
                   </div>
                   <div className="h-2 rounded-full bg-[rgba(148,163,184,0.2)]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300"
+                      className="h-full rounded-full bg-[var(--accent)]"
                       style={{ width: `${Math.max(6, width)}%` }}
                     />
                   </div>
@@ -1334,7 +1334,7 @@ export default function TodayPage() {
                   </div>
                   <div className="mt-1 h-1.5 rounded-full bg-[rgba(148,163,184,0.2)]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                      className="h-full rounded-full bg-[var(--accent)]"
                       style={{ width: `${Math.max(4, width)}%` }}
                     />
                   </div>

@@ -41,18 +41,6 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
   return (
     <div className="glass-chart-wrap p-4">
       <svg viewBox="0 0 680 260" className="h-60 w-full" role="img" aria-label="7天专注时长趋势图">
-        <defs>
-          <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(59,130,246,0.36)" />
-            <stop offset="100%" stopColor="rgba(59,130,246,0.02)" />
-          </linearGradient>
-          <linearGradient id="trendStroke" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="#3b82f6" />
-            <stop offset="55%" stopColor="#60a5fa" />
-            <stop offset="100%" stopColor="#38bdf8" />
-          </linearGradient>
-        </defs>
-
         {gridLines.map((y) => (
           <line
             key={y}
@@ -60,27 +48,27 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
             y1={y}
             x2="650"
             y2={y}
-            stroke="rgba(99,132,180,0.2)"
+            stroke="rgba(148,163,184,0.36)"
             strokeWidth="1"
             strokeDasharray="4 8"
           />
         ))}
 
-        <line x1="30" y1="230" x2="650" y2="230" stroke="rgba(148,163,184,0.34)" strokeWidth="2" />
-        <polyline points={area} fill="url(#trendFill)" stroke="none" />
+        <line x1="30" y1="230" x2="650" y2="230" stroke="rgba(148,163,184,0.44)" strokeWidth="2" />
+        <polyline points={area} fill="rgba(10,132,255,0.14)" stroke="none" />
         <polyline
           points={polyline}
           fill="none"
-          stroke="url(#trendStroke)"
+          stroke="#0a84ff"
           strokeWidth="4"
           strokeLinejoin="round"
           strokeLinecap="round"
         />
         {layout.map((point) => (
           <g key={point.date}>
-            <circle cx={point.x} cy={point.y} r="9" fill="rgba(59,130,246,0.22)" />
-            <circle cx={point.x} cy={point.y} r="5.5" fill="#2563eb" />
-            <text x={point.x} y="250" textAnchor="middle" className="fill-[rgba(226,235,255,0.7)] text-[11px]">
+            <circle cx={point.x} cy={point.y} r="9" fill="rgba(10,132,255,0.16)" />
+            <circle cx={point.x} cy={point.y} r="5.5" fill="#0a84ff" />
+            <text x={point.x} y="250" textAnchor="middle" className="fill-[rgba(107,114,128,0.9)] text-[11px]">
               {shortDate(point.date)}
             </text>
           </g>

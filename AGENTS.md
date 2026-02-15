@@ -333,3 +333,19 @@
 
 - **[2026-02-15] 当前状态**：UI 彻底重构已在本地完成并通过全量校验（未做远端部署）。
 - **[2026-02-15] 下一步**：根据你的主观审美反馈，继续微调玻璃强度、字重和图表密度。
+
+## Decisions（增量）
+
+- **[2026-02-15] 浅色苹果风改造**：全站改为浅色基底，移除重渐变背景，统一蓝色强调与轻阴影。
+  - Why：按最新反馈回归苹果风视觉，避免暗色+重渐变带来的“土气感”。
+  - Impact：`app/globals.css`、`app/layout.tsx`、`public/manifest.webmanifest`、`public/icons/*`、`app/today/page.tsx`、`app/focus/page.tsx`、`app/todo/page.tsx`、`components/charts/*`、`components/feedback-state.tsx`。
+  - Verify：`npm run lint`、`npm run test`、`npm run typecheck`、`npm run build` 全通过。
+
+## Commands（增量）
+
+- **[2026-02-15] 全量校验**：`npm run lint`、`npm run test`、`npm run typecheck`、`npm run build`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：浅色苹果风已完成并通过本地全量校验。
+- **[2026-02-15] 下一步**：测试 VPS 重部署因当前机器无可用 SSH 凭据失败，待补充可用登录方式后重试部署验收。

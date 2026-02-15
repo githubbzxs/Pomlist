@@ -8,8 +8,8 @@ type FeedbackStateProps = {
 };
 
 const ICON_MAP: Record<FeedbackStateProps["variant"], string> = {
-  loading: "⟳",
-  empty: "◌",
+  loading: "...",
+  empty: "-",
   error: "!",
 };
 
@@ -22,7 +22,7 @@ export function FeedbackState({
   return (
     <section className="panel mx-auto w-full max-w-xl p-6 text-center">
       <div
-        className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[var(--line-soft)] bg-[rgba(15,23,42,0.7)] text-xl text-main ${
+        className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[var(--line-soft)] bg-[rgba(255,255,255,0.96)] text-xl text-main ${
           variant === "loading" ? "animate-spin" : ""
         }`}
       >

@@ -28,10 +28,10 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
                 {bucket.sessionCount} 次 · {minutes} 分钟
               </span>
             </div>
-            <div className="h-3 rounded-full bg-[rgba(15,23,42,0.55)] shadow-[inset_0_0_6px_rgba(15,23,42,0.6)]">
+            <div className="h-3 rounded-full bg-[rgba(15,23,42,0.08)]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#38bdf8]"
-                style={{ width: `${ratio}%` }}
+                className="h-full rounded-full"
+                style={{ width: `${ratio}%`, backgroundColor: "var(--accent)" }}
               />
             </div>
           </div>

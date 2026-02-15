@@ -156,8 +156,8 @@ export default function FocusPage() {
               <span
                 className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
                   task.completed
-                    ? "border border-[rgba(74,222,128,0.35)] bg-[rgba(34,197,94,0.2)] text-emerald-200"
-                    : "bg-[rgba(148,163,184,0.14)] text-subtle"
+                    ? "border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.12)] text-emerald-700"
+                    : "bg-[rgba(148,163,184,0.16)] text-subtle"
                 }`}
               >
                 {task.completed ? "已完成" : "进行中"}
