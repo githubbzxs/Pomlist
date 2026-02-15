@@ -1074,10 +1074,48 @@ button {
   gap: 0.5rem;
 }
 
+.task-picker-header-main {
+  min-width: 0;
+}
+
+.task-picker-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.task-picker-create-toggle {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.task-picker-create-toggle:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.36);
+  color: var(--text-normal);
+}
+
+.task-picker-create-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .task-picker-create-form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  padding-top: 0.55rem;
+}
+
+.task-picker-create-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .task-meta-form-grid {
