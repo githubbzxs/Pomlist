@@ -7,8 +7,8 @@ function toMinutes(seconds: number): number {
 export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }) {
   if (buckets.length === 0) {
     return (
-      <div className="panel-solid flex h-56 items-center justify-center p-4">
-        <p className="text-sm text-subtle">暂无 30 天分布数据</p>
+      <div className="glass-chart-wrap chart-empty">
+        <p>暂无 30 天分布数据</p>
       </div>
     );
   }
@@ -16,7 +16,7 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
   const max = Math.max(1, ...buckets.map((item) => item.totalDurationSeconds));
 
   return (
-    <div className="panel-solid space-y-3 p-4">
+    <div className="glass-chart-wrap space-y-3 p-4">
       {buckets.map((bucket) => {
         const ratio = Math.min(100, (bucket.totalDurationSeconds / max) * 100);
         const minutes = toMinutes(bucket.totalDurationSeconds);
@@ -28,9 +28,9 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
                 {bucket.sessionCount} 次 · {minutes} 分钟
               </span>
             </div>
-            <div className="h-3 rounded-full bg-[rgba(148,163,184,0.16)]">
+            <div className="h-3 rounded-full bg-[rgba(15,23,42,0.55)] shadow-[inset_0_0_6px_rgba(15,23,42,0.6)]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                className="h-full rounded-full bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#38bdf8]"
                 style={{ width: `${ratio}%` }}
               />
             </div>
@@ -40,4 +40,3 @@ export function DistributionChart({ buckets }: { buckets: DistributionBucket[] }
     </div>
   );
 }
-

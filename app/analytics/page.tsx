@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
@@ -19,7 +19,7 @@ function formatDuration(seconds: number): string {
   }
   const hour = Math.floor(minute / 60);
   const remain = minute % 60;
-  return `${hour} 小时 ${remain} 分`;
+  return `${hour} 小时 ${remain} 分钟`;
 }
 
 function errorToText(error: unknown): string {
@@ -29,17 +29,19 @@ function errorToText(error: unknown): string {
   return "加载复盘数据失败，请稍后重试。";
 }
 
+const EMPTY_METRICS: DashboardMetrics = {
+  date: "",
+  sessionCount: 0,
+  totalDurationSeconds: 0,
+  completionRate: 0,
+  streakDays: 0,
+  completedTaskCount: 0,
+};
+
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    date: "",
-    sessionCount: 0,
-    totalDurationSeconds: 0,
-    completionRate: 0,
-    streakDays: 0,
-    completedTaskCount: 0,
-  });
+  const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
 
@@ -86,47 +88,47 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="staggered-reveal space-y-4 pb-20">
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <article className="panel p-4">
-          <p className="text-xs text-subtle">今日任务钟</p>
-          <p className="page-title mt-2 text-2xl font-bold text-main">{metrics.sessionCount}</p>
+    <div className="analytics-layout staggered-reveal">
+      <section className="stats-overview-grid">
+        <article className="glass-metric p-4">
+          <p className="metric-label">今日任务钟</p>
+          <p className="metric-value page-title mt-2">{metrics.sessionCount}</p>
         </article>
-        <article className="panel p-4">
-          <p className="text-xs text-subtle">今日完成任务</p>
-          <p className="page-title mt-2 text-2xl font-bold text-main">{metrics.completedTaskCount}</p>
+        <article className="glass-metric p-4">
+          <p className="metric-label">今日完成任务</p>
+          <p className="metric-value page-title mt-2">{metrics.completedTaskCount}</p>
         </article>
-        <article className="panel p-4">
-          <p className="text-xs text-subtle">完成率</p>
-          <p className="page-title mt-2 text-2xl font-bold text-main">{Math.round(metrics.completionRate)}%</p>
+        <article className="glass-metric p-4">
+          <p className="metric-label">完成率</p>
+          <p className="metric-value page-title mt-2">{Math.round(metrics.completionRate)}%</p>
         </article>
-        <article className="panel p-4">
-          <p className="text-xs text-subtle">连续天数</p>
-          <p className="page-title mt-2 text-2xl font-bold text-main">{metrics.streakDays} 天</p>
+        <article className="glass-metric p-4">
+          <p className="metric-label">连续天数</p>
+          <p className="metric-value page-title mt-2">{metrics.streakDays} 天</p>
         </article>
       </section>
 
-      <section className="panel p-4">
-        <div className="flex items-center justify-between">
+      <section className="glass-card-panel mt-4">
+        <div className="todo-section-title">
           <h2 className="page-title text-xl font-bold text-main">今日专注时长</h2>
           <button type="button" className="btn-muted h-9 px-3 text-sm" onClick={() => void loadAnalytics()}>
             刷新
           </button>
         </div>
-        <p className="mt-3 text-lg font-semibold text-main">{formatDuration(metrics.totalDurationSeconds)}</p>
+        <p className="metric-value page-title mt-3 text-2xl">{formatDuration(metrics.totalDurationSeconds)}</p>
       </section>
 
-      <section className="panel p-4">
+      <section className="glass-card-panel mt-4">
         <h2 className="page-title text-xl font-bold text-main">近 7 天趋势</h2>
-        <p className="mt-1 text-sm text-subtle">按每日任务钟统计总时长</p>
+        <p className="stats-section-subtitle">按每日电量统计总时长</p>
         <div className="mt-3">
           <TrendChart points={trend} />
         </div>
       </section>
 
-      <section className="panel p-4">
-        <h2 className="page-title text-xl font-bold text-main">近 30 天时长分布</h2>
-        <p className="mt-1 text-sm text-subtle">按任务钟时长分桶统计</p>
+      <section className="glass-card-panel mt-4">
+        <h2 className="page-title text-xl font-bold text-main">近 30 天分布</h2>
+        <p className="stats-section-subtitle">按任务钟时长分桶统计</p>
         <div className="mt-3">
           <DistributionChart buckets={distribution} />
         </div>
@@ -134,4 +136,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-

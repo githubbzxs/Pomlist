@@ -27,31 +27,60 @@ function shortDate(dateText: string): string {
 export function TrendChart({ points }: { points: TrendPoint[] }) {
   if (points.length === 0) {
     return (
-      <div className="panel-solid flex h-56 items-center justify-center p-4">
-        <p className="text-sm text-subtle">暂无 7 天趋势数据</p>
+      <div className="glass-chart-wrap chart-empty">
+        <p>暂无 7 天趋势数据</p>
       </div>
     );
   }
 
   const layout = formatPoints(points);
   const polyline = layout.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = `30,230 ${polyline} 650,230`;
+  const gridLines = [60, 95, 130, 165, 200];
 
   return (
-    <div className="panel-solid p-4">
+    <div className="glass-chart-wrap p-4">
       <svg viewBox="0 0 680 260" className="h-60 w-full" role="img" aria-label="7天专注时长趋势图">
         <defs>
           <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(59,130,246,0.38)" />
-            <stop offset="100%" stopColor="rgba(59,130,246,0.06)" />
+            <stop offset="0%" stopColor="rgba(59,130,246,0.36)" />
+            <stop offset="100%" stopColor="rgba(59,130,246,0.02)" />
+          </linearGradient>
+          <linearGradient id="trendStroke" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#3b82f6" />
+            <stop offset="55%" stopColor="#60a5fa" />
+            <stop offset="100%" stopColor="#38bdf8" />
           </linearGradient>
         </defs>
+
+        {gridLines.map((y) => (
+          <line
+            key={y}
+            x1="30"
+            y1={y}
+            x2="650"
+            y2={y}
+            stroke="rgba(99,132,180,0.2)"
+            strokeWidth="1"
+            strokeDasharray="4 8"
+          />
+        ))}
+
         <line x1="30" y1="230" x2="650" y2="230" stroke="rgba(148,163,184,0.34)" strokeWidth="2" />
-        <polyline points={`30,230 ${polyline} 650,230`} fill="url(#trendFill)" stroke="none" />
-        <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+        <polyline points={area} fill="url(#trendFill)" stroke="none" />
+        <polyline
+          points={polyline}
+          fill="none"
+          stroke="url(#trendStroke)"
+          strokeWidth="4"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
         {layout.map((point) => (
           <g key={point.date}>
-            <circle cx={point.x} cy={point.y} r="5" fill="#2563eb" />
-            <text x={point.x} y="250" textAnchor="middle" className="fill-slate-300 text-[12px]">
+            <circle cx={point.x} cy={point.y} r="9" fill="rgba(59,130,246,0.22)" />
+            <circle cx={point.x} cy={point.y} r="5.5" fill="#2563eb" />
+            <text x={point.x} y="250" textAnchor="middle" className="fill-[rgba(226,235,255,0.7)] text-[11px]">
               {shortDate(point.date)}
             </text>
           </g>
@@ -60,4 +89,3 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
     </div>
   );
 }
-
