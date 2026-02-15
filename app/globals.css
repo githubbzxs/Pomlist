@@ -466,6 +466,42 @@ button {
   text-align: center;
 }
 
+.mobile-main-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.mobile-main-timer {
+  text-align: center;
+}
+
+.mobile-main-divider {
+  height: 1px;
+  background: rgba(148, 163, 184, 0.26);
+}
+
+.mobile-main-task-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.mobile-main-task-area .md-task-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.1rem;
+}
+
+.mobile-main-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .timer-display {
   margin-top: 0.25rem;
   font-size: clamp(2rem, 8vw, 3rem);

@@ -816,72 +816,76 @@ export default function TodayPage() {
         <h1 className="page-title text-2xl font-bold text-main">Pomlist</h1>
       </header>
 
-      <section className="mobile-card timer-card">
-        <p className="timer-display page-title">{formatClock(displaySeconds)}</p>
-        <div className="progress-track mt-2">
-          <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
-        </div>
-        {totalCount > 0 ? (
-          <p className="mt-2 text-xs text-subtle">
-            {completedCount}/{totalCount}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="mobile-card task-board grow">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="page-title text-lg font-bold text-main">任务</h2>
-          <span className="progress-chip">
-            {completedCount}/{totalCount}
-          </span>
-        </div>
-
-        {centerTasks.length === 0 ? null : (
-          <div className="md-task-list">
-            {centerTasks.map((task) => (
-              <button
-                key={task.id}
-                type="button"
-                className={`md-task-item ${task.completed ? "is-checked" : ""}`}
-                onClick={() => void handleToggleCenterTask(task.id, !task.completed)}
-                disabled={ending}
-              >
-                <span className={`md-task-checkbox ${task.completed ? "is-checked" : ""}`} />
-                <span className="md-task-content">
-                  <span className="md-task-text">{task.title}</span>
-                </span>
-              </button>
-            ))}
+      <section className="mobile-card mobile-main-panel grow">
+        <div className="mobile-main-timer">
+          <p className="timer-display page-title">{formatClock(displaySeconds)}</p>
+          <div className="progress-track mt-2">
+            <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
           </div>
-        )}
-      </section>
+          <p className="mt-2 text-xs text-subtle">
+            {totalCount > 0 ? `${completedCount}/${totalCount}` : "尚未添加任务"}
+          </p>
+        </div>
 
-      <section className="center-controls">
-        <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
-          添加任务
-        </button>
-        {session ? (
-          <button
-            type="button"
-            className="btn-primary h-11 grow text-sm"
-            onClick={() => void handleEndSession()}
-            disabled={ending}
-          >
-            {ending ? "正在结束..." : "结束并记录"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn-primary h-11 grow text-sm"
-            onClick={() => void handleStartSession()}
-            disabled={plannedTodos.length === 0 || starting}
-          >
-            {starting ? "正在开始..." : `开始专注（${plannedTodos.length}）`}
-          </button>
-        )}
-      </section>
+        <div className="mobile-main-divider" />
 
-      {error ? <p className="app-inline-error">{error}</p> : null}
+        <div className="mobile-main-task-area">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="page-title text-lg font-bold text-main">任务</h2>
+            <span className="progress-chip">
+              {completedCount}/{totalCount}
+            </span>
+          </div>
+
+          {centerTasks.length === 0 ? (
+            <p className="task-empty">当前没有任务，先添加再开始。</p>
+          ) : (
+            <div className="md-task-list">
+              {centerTasks.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  className={`md-task-item ${task.completed ? "is-checked" : ""}`}
+                  onClick={() => void handleToggleCenterTask(task.id, !task.completed)}
+                  disabled={ending}
+                >
+                  <span className={`md-task-checkbox ${task.completed ? "is-checked" : ""}`} />
+                  <span className="md-task-content">
+                    <span className="md-task-text">{task.title}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mobile-main-actions">
+          <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
+            添加任务
+          </button>
+          {session ? (
+            <button
+              type="button"
+              className="btn-primary h-11 grow text-sm"
+              onClick={() => void handleEndSession()}
+              disabled={ending}
+            >
+              {ending ? "正在结束..." : "结束并记录"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary h-11 grow text-sm"
+              onClick={() => void handleStartSession()}
+              disabled={plannedTodos.length === 0 || starting}
+            >
+              {starting ? "正在开始..." : `开始专注（${plannedTodos.length}）`}
+            </button>
+          )}
+        </div>
+
+        {error ? <p className="app-inline-error">{error}</p> : null}
+      </section>
     </div>
   );
 
