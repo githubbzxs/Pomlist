@@ -1348,7 +1348,7 @@ button {
 
 .meta-manager-row-main {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
 }
@@ -1375,11 +1375,15 @@ button {
 }
 
 .meta-manager-row-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: end;
   gap: 0.35rem;
+}
+
+.meta-manager-row-actions .meta-manager-color-palette.is-inline {
+  grid-column: 1 / -1;
 }
 
 .meta-manager-row-editor {
