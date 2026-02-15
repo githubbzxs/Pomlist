@@ -662,3 +662,26 @@
 
 - **[2026-02-15] 当前状态**：Today 四向画布、任务管理弹层、历史与统计面板、解锁页 glass 风格已完成代码落地。
 - **[2026-02-15] 下一步**：在 macOS 环境执行 `xcodegen generate` 与 Xcode 编译，做一次真机手势与弹层交互验收。
+
+## Decisions（增量）
+
+- **[2026-02-15] iOS IPA CI 失败根因修复**：修复 `TodayCanvasView` 的 `ForEach` 推断与 `foregroundStyle` 三元类型问题，解除 CI `exit code 65`。
+  - Why：`iOS Unsigned IPA` 在 `Build archive (unsigned)` 阶段失败，日志定位到 `TodayCanvasView.swift` 的类型推断错误。
+  - Impact：`ios/Sources/Views/Today/TodayCanvasView.swift`。
+  - Verify：重新触发 workflow 后，归档与打包步骤通过并上传 artifact。
+
+- **[2026-02-15] GitHub Actions 验证通过**：`iOS Unsigned IPA` 手动触发 run `22034057851` 成功，push 触发 run `22034056492` 也成功。
+  - Why：按最新要求必须完成 Actions 构建验收并留档。
+  - Impact：`.github/workflows/ios-unsigned-ipa.yml` 产物链路。
+  - Verify：`gh run list --workflow ios-unsigned-ipa.yml` 显示两条 run 均为 `completed success`，artifact 为 `pomlist-ios-unsigned-ipa`。
+
+## Commands（增量）
+
+- **[2026-02-15] 触发 IPA 构建**：`gh workflow run ios-unsigned-ipa.yml --ref main`
+- **[2026-02-15] 观察构建结果**：`gh run watch 22034057851 --exit-status`
+- **[2026-02-15] 查看失败日志**：`gh run view 22034020124 --log-failed`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：CI 构建链路恢复正常，未签名 IPA artifact 已由 GitHub Actions 成功产出。
+- **[2026-02-15] 下一步**：按需下载 `pomlist-ios-unsigned-ipa` 并进行真机安装验收。
