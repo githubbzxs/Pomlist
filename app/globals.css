@@ -1945,6 +1945,17 @@ body {
   border-top-color: rgba(255, 255, 255, 0.1);
 }
 
+.canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-home {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-stack::before,
+.canvas-panel-content-home .mobile-main-panel--frameless.panel-glass-home::after {
+  display: none;
+}
+
 .home-task-item,
 .md-task-item,
 .library-item,
