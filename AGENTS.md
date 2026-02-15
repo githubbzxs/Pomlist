@@ -628,3 +628,15 @@
 
 - **[2026-02-15] 当前状态**：Web -> iOS 代码切换、迁移工具、未签名 IPA 工作流与文档已完成。
 - **[2026-02-15] 下一步**：在 macOS 环境执行 `xcodegen + xcodebuild` 实机验证，并按你的本地安装链路完成未签名 IPA 安装验收。
+
+## Decisions（增量）
+
+- **[2026-02-15] 大陆测试机发布口径调整**：本轮重构后不再维持 Web 进程，测试机仅同步 iOS 主线代码。
+  - Why：仓库已彻底切换为 iOS 原生工程，Web 运行时与 Node 依赖已移除。
+  - Impact：大陆机 `C:\www\pomlist` 拉取到 `8725333` 后执行 `pm2 delete pomlist` 下线旧服务。
+  - Verify：`git rev-parse --short HEAD` 为 `8725333`，`pm2 ls` 仅保留 `caddy`。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：主仓库与大陆测试机均已切换到 iOS 主线，旧 Web 进程已下线。
+- **[2026-02-15] 下一步**：在 macOS/GitHub Actions 完成未签名 IPA 构建并做真机安装验收。
