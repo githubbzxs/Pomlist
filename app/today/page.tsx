@@ -811,12 +811,12 @@ export default function TodayPage() {
   }
 
   const centerPanel = (
-    <div className="canvas-panel-content">
+    <div className="canvas-panel-content canvas-panel-content-home">
       <header className="canvas-panel-header">
         <h1 className="page-title text-2xl font-bold text-main">Pomlist</h1>
       </header>
 
-      <section className="mobile-card mobile-main-panel grow">
+      <section className="mobile-main-panel mobile-main-panel--frameless grow">
         <div className="mobile-main-timer">
           <p className="timer-display page-title">{formatClock(displaySeconds)}</p>
           <div className="progress-track mt-2">
@@ -832,7 +832,7 @@ export default function TodayPage() {
         <div className="mobile-main-task-area">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="page-title text-lg font-bold text-main">任务</h2>
-            <span className="progress-chip">
+            <span className="home-progress-text">
               {completedCount}/{totalCount}
             </span>
           </div>
@@ -840,12 +840,12 @@ export default function TodayPage() {
           {centerTasks.length === 0 ? (
             <p className="task-empty">当前没有任务，先添加再开始。</p>
           ) : (
-            <div className="md-task-list">
+            <div className="md-task-list home-task-list">
               {centerTasks.map((task) => (
                 <button
                   key={task.id}
                   type="button"
-                  className={`md-task-item ${task.completed ? "is-checked" : ""}`}
+                  className={`md-task-item home-task-item ${task.completed ? "is-checked" : ""}`}
                   onClick={() => void handleToggleCenterTask(task.id, !task.completed)}
                   disabled={ending}
                 >
@@ -859,7 +859,7 @@ export default function TodayPage() {
           )}
         </div>
 
-        <div className="mobile-main-actions">
+        <div className="mobile-main-actions mobile-main-actions--floating">
           <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
             添加任务
           </button>
@@ -1355,7 +1355,7 @@ export default function TodayPage() {
 
   return (
     <div className="mobile-page">
-      <section className="mobile-phone-frame">
+      <section className="mobile-phone-frame mobile-phone-frame-home">
         <AppCanvas panel={panel} onPanelChange={setPanel} center={centerPanel} right={rightPanel} down={downPanel} />
         <TaskPickerDrawer
           open={drawerOpen}
