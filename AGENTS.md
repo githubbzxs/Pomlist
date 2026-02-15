@@ -390,3 +390,35 @@
 
 - **[2026-02-15] 当前状态**：大陆 VPS 已更新到 `3f19d70`，深黑主题与“进行中隐藏时间、结束后显示用时”已在线生效。
 - **[2026-02-15] 下一步**：如需，我可以补做一次公网域名 `pomlist.0xpsyche.me` 的 HTTPS 回源验收。
+
+## Decisions（增量）
+
+- **[2026-02-15] 主页中心面板去细线**：移除 `today` 中心主区细线边框与伪元素描边。
+  - Why：按最新视觉反馈，主区不需要框线干扰。
+  - Impact：`app/globals.css`。
+  - Verify：中心主区不再出现外框细线。
+
+- **[2026-02-15] 任务按钮对比度修复**：提升“添加任务”区域按钮与禁用态文字可读性。
+  - Why：修复浅灰按钮与文字对比度不足问题。
+  - Impact：`app/globals.css`。
+  - Verify：按钮在可用/禁用状态下文字均清晰可读。
+
+- **[2026-02-15] 统计区精简**：移除 `today` 统计页“时段分布（UTC）”独立区块与“7 天趋势”图。
+  - Why：按最新信息层级要求收敛统计视图。
+  - Impact：`app/today/page.tsx`、`app/analytics/page.tsx`。
+  - Verify：统计页不再出现“时段分布（UTC）”与“7 天趋势”。
+
+- **[2026-02-15] 分布口径改造**：将“30 天分布”改为“时间分布”，按小时分布展示。
+  - Why：按新口径聚焦一天内时段分布而非时长分桶。
+  - Impact：`app/today/page.tsx`、`app/analytics/page.tsx`、`components/charts/distribution-chart.tsx`、`lib/client/types.ts`。
+  - Verify：标题为“时间分布”，横条标签为 `00:00` 等小时段。
+
+- **[2026-02-15] 标签配色多样化**：标签默认配色改为多色系，并按标签名自动分配稳定色值。
+  - Why：解决标签默认同色系导致识别度不足问题。
+  - Impact：`app/today/page.tsx`、`components/mobile/task-picker-drawer.tsx`。
+  - Verify：不同标签自动呈现不同色系，旧默认单蓝标签会被分散映射。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：6 条视觉与统计改动已完成，并通过本地 `lint/test/typecheck/build`。
+- **[2026-02-15] 下一步**：大陆 VPS 重部署并验收 `today` 页面按钮可读性与统计区块显示。
