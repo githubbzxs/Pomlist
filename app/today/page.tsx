@@ -40,8 +40,9 @@ const DEFAULT_CATEGORY = "未分类";
 const DEFAULT_PRIMARY_TAG = "未标签";
 const TAG_REGISTRY_KEY = "pomlist.meta.tags";
 const TAG_COLOR_REGISTRY_KEY = "pomlist.meta.tag-colors";
-const COMMON_TAG_COLORS = ["#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#0ea5e9", "#06b6d4", "#38bdf8", "#6366f1"];
+const COMMON_TAG_COLORS = ["#2563eb", "#06b6d4", "#14b8a6", "#22c55e", "#eab308", "#f97316", "#ef4444", "#8b5cf6"];
 const DEFAULT_TAG_COLOR = COMMON_TAG_COLORS[0];
+const LEGACY_DEFAULT_TAG_COLOR = "#1d4ed8";
 
 const EMPTY_DASHBOARD: DashboardMetrics = {
   date: "",
@@ -207,6 +208,18 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function resolveTagColor(tag: string): string {
+  const value = tag.trim();
+  if (!value) {
+    return DEFAULT_TAG_COLOR;
+  }
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
+  }
+  return COMMON_TAG_COLORS[Math.abs(hash) % COMMON_TAG_COLORS.length];
+}
+
 function tagPillStyle(color: string) {
   return {
     color,
@@ -368,8 +381,34 @@ export default function TodayPage() {
     [tagOptions, taskEditorPrimaryTag],
   );
 
+  useEffect(() => {
+    if (tagOptions.length === 0) {
+      return;
+    }
+    setTagColorMap((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const tag of tagOptions) {
+        const current = normalizeHexColor(next[tag]);
+        if (!current) {
+          next[tag] = resolveTagColor(tag);
+          changed = true;
+          continue;
+        }
+        if (current === LEGACY_DEFAULT_TAG_COLOR && tagOptions.length > 1) {
+          const diversified = resolveTagColor(tag);
+          if (diversified !== current) {
+            next[tag] = diversified;
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [tagOptions]);
+
   const getTagColor = useCallback(
-    (tag: string) => normalizeHexColor(tagColorMap[tag]) ?? DEFAULT_TAG_COLOR,
+    (tag: string) => normalizeHexColor(tagColorMap[tag]) ?? resolveTagColor(tag),
     [tagColorMap],
   );
 
@@ -608,7 +647,7 @@ export default function TodayPage() {
           if (normalizeHexColor(prev[nextTags[0]!])) {
             return prev;
           }
-          return { ...prev, [nextTags[0]!]: DEFAULT_TAG_COLOR };
+          return { ...prev, [nextTags[0]!]: resolveTagColor(nextTags[0]!) };
         });
       }
 
@@ -668,7 +707,7 @@ export default function TodayPage() {
           if (normalizeHexColor(prev[nextTags[0]!])) {
             return prev;
           }
-          return { ...prev, [nextTags[0]!]: DEFAULT_TAG_COLOR };
+          return { ...prev, [nextTags[0]!]: resolveTagColor(nextTags[0]!) };
         });
       }
       setTaskEditorPrimaryTag(nextTags[0] ?? "");
@@ -711,7 +750,7 @@ export default function TodayPage() {
   function handleAddTag(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = newTagName.trim();
-    const color = normalizeHexColor(newTagColor) ?? DEFAULT_TAG_COLOR;
+    const color = normalizeHexColor(newTagColor) ?? resolveTagColor(value);
     if (!value) {
       return;
     }
@@ -759,7 +798,7 @@ export default function TodayPage() {
         const next = { ...prev };
         const sourceColor = normalizeHexColor(next[source]);
         delete next[source];
-        next[nextName] = sourceColor ?? DEFAULT_TAG_COLOR;
+        next[nextName] = sourceColor ?? resolveTagColor(nextName);
         return next;
       });
     });

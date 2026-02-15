@@ -4,7 +4,8 @@ import { FormEvent, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TodoItem } from "@/lib/client/types";
 
-const DEFAULT_TAG_COLOR = "#38bdf8";
+const TAG_COLOR_PALETTE = ["#2563eb", "#06b6d4", "#14b8a6", "#22c55e", "#eab308", "#f97316", "#ef4444", "#8b5cf6"];
+const DEFAULT_TAG_COLOR = TAG_COLOR_PALETTE[0];
 const DEFAULT_CATEGORY = "未分类";
 
 export type CreateTaskInput = {
@@ -60,6 +61,18 @@ function hexToRgba(hex: string, alpha: number): string {
   const g = Number.parseInt(normalized.slice(3, 5), 16);
   const b = Number.parseInt(normalized.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function resolveTagColor(tag: string): string {
+  const value = tag.trim();
+  if (!value) {
+    return DEFAULT_TAG_COLOR;
+  }
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
+  }
+  return TAG_COLOR_PALETTE[Math.abs(hash) % TAG_COLOR_PALETTE.length];
 }
 
 function primaryTagPillStyle(color: string): CSSProperties {
@@ -240,7 +253,9 @@ export function TaskPickerDrawer({
                 const tagLevels = readTagLevels(todo);
                 const primary = tagLevels[0];
                 const secondary = tagLevels[1];
-                const primaryColor = normalizeHexColor(primary ? tagColorMap[primary] : undefined) ?? DEFAULT_TAG_COLOR;
+                const primaryColor = primary
+                  ? normalizeHexColor(tagColorMap[primary]) ?? resolveTagColor(primary)
+                  : DEFAULT_TAG_COLOR;
 
                 return (
                   <button
