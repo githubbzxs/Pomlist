@@ -640,3 +640,25 @@
 
 - **[2026-02-15] 当前状态**：主仓库与大陆测试机均已切换到 iOS 主线，旧 Web 进程已下线。
 - **[2026-02-15] 下一步**：在 macOS/GitHub Actions 完成未签名 IPA 构建并做真机安装验收。
+
+## Decisions（增量）
+
+- **[2026-02-15] Today 主架构切换**：解锁后主界面从 `TabView` 改为四向画布（中主页 / 右任务 / 下统计 / 上历史）。
+  - Why：按“尽量平移 Web 结构”的要求统一信息架构与操作路径。
+  - Impact：`ios/Sources/App/PomlistRootView.swift`、`ios/Sources/Views/Today/TodayCanvasView.swift`、`ios/Sources/Views/Today/TodayCanvasViewModel.swift`。
+  - Verify：中心页可左滑到任务、上滑到历史、下滑到统计，侧页可反向回中心。
+
+- **[2026-02-15] Liquid Glass 视觉系统落地**：新增统一玻璃卡片与按钮样式，并接入解锁页与 Today 画布。
+  - Why：满足“使用 SwiftUI 液态玻璃能力”的视觉要求，避免页面风格分裂。
+  - Impact：`ios/Sources/Components/Glass/PLLiquidGlass.swift`、`ios/Sources/Views/Unlock/UnlockView.swift`、`ios/Sources/Components/PLPanelCard.swift`、`ios/Sources/Components/PLMetricCard.swift`。
+  - Verify：主卡片、输入、按钮均使用同一套玻璃样式，交互按压反馈一致。
+
+- **[2026-02-15] 系统边界提升**：iOS 最低版本从 `17.0` 提升到 `18.0`。
+  - Why：按本轮决策仅面向最新系统能力，不再维护旧系统视觉兼容。
+  - Impact：`ios/project.yml`、`README.md`。
+  - Verify：XcodeGen 配置中的 deployment target 为 `iOS 18.0`。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：Today 四向画布、任务管理弹层、历史与统计面板、解锁页 glass 风格已完成代码落地。
+- **[2026-02-15] 下一步**：在 macOS 环境执行 `xcodegen generate` 与 Xcode 编译，做一次真机手势与弹层交互验收。

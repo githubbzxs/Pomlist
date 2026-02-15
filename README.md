@@ -2,7 +2,7 @@
 
 Pomlist 已完成从 Web 到 iOS 的重构，当前仓库主线是原生 iOS App。
 
-- 技术栈：SwiftUI + SwiftData（iOS 17+）
+- 技术栈：SwiftUI + SwiftData（iOS 18+）
 - 鉴权：Face ID / Touch ID + 4 位口令兜底
 - 数据迁移：支持导入 `PomlistMigrationV1`
 - 构建：GitHub Actions 产出未签名 IPA
