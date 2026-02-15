@@ -1,72 +1,66 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-const DEFAULT_INPUT_PATH = "data/pomlist-db.json";
+const SCHEMA = "PomlistMigrationV1";
+const DEFAULT_INPUT = "data/pomlist-db.json";
 const DEFAULT_OUTPUT_DIR = "tools/migration/output";
-const MIGRATION_SCHEMA = "PomlistMigrationV1";
 
 function printHelp() {
-  console.log(
-    [
-      "将旧版 pomlist-db.json 导出为 PomlistMigrationV1。",
-      "",
-      "用法：",
-      "  node tools/migration/export-pomlist-migration-v1.mjs [options]",
-      "",
-      "参数：",
-      "  -i, --input <path>    输入文件路径（默认：data/pomlist-db.json）",
-      "  -o, --output <path>   输出文件路径（默认：tools/migration/output/PomlistMigrationV1-时间戳.json）",
-      "  -h, --help            显示帮助",
-    ].join("\n"),
-  );
+  console.log(`将旧版 pomlist-db.json 导出为 ${SCHEMA}。\n
+用法:
+  node tools/migration/export-pomlist-migration-v1.mjs [options]
+
+参数:
+  -i, --input <path>    输入文件路径（默认: ${DEFAULT_INPUT}）
+  -o, --output <path>   输出文件路径（默认: ${DEFAULT_OUTPUT_DIR}/${SCHEMA}-时间戳.json）
+  -h, --help            显示帮助`);
 }
 
 function parseArgs(argv) {
   const options = {
-    input: DEFAULT_INPUT_PATH,
-    output: "",
+    input: DEFAULT_INPUT,
+    output: null,
     help: false,
   };
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
     if (arg === "-h" || arg === "--help") {
       options.help = true;
       continue;
     }
 
     if (arg === "-i" || arg === "--input") {
-      const value = argv[index + 1];
+      const value = argv[i + 1];
       if (!value) {
-        throw new Error("缺少 --input 的路径参数。");
+        throw new Error("缺少 --input 参数值");
       }
       options.input = value;
-      index += 1;
+      i += 1;
       continue;
     }
 
     if (arg === "-o" || arg === "--output") {
-      const value = argv[index + 1];
+      const value = argv[i + 1];
       if (!value) {
-        throw new Error("缺少 --output 的路径参数。");
+        throw new Error("缺少 --output 参数值");
       }
       options.output = value;
-      index += 1;
+      i += 1;
       continue;
     }
 
-    throw new Error(`不支持的参数：${arg}`);
+    throw new Error(`不支持的参数: ${arg}`);
   }
 
   return options;
 }
 
 function isObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function toArray(value) {
@@ -84,19 +78,24 @@ function toNullableString(value) {
   if (typeof value !== "string") {
     return null;
   }
-  return value.trim() === "" ? null : value;
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
 }
 
-function toNonNegativeInteger(value, fallback = 0) {
+function toInteger(value, fallback = 0) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
     return fallback;
   }
-  return Math.max(0, Math.floor(parsed));
+  return Math.floor(parsed);
 }
 
-function toBoolean(value, fallback = false) {
-  return typeof value === "boolean" ? value : fallback;
+function toNonNegativeInteger(value, fallback = 0) {
+  return Math.max(0, toInteger(value, fallback));
+}
+
+function normalizePriority(value) {
+  return Math.min(3, Math.max(1, Math.round(Number(value) || 2)));
 }
 
 function normalizeStatus(value) {
@@ -106,219 +105,139 @@ function normalizeStatus(value) {
   return "pending";
 }
 
-function normalizePriority(value) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return 2;
-  }
-  return Math.min(3, Math.max(1, Math.round(parsed)));
-}
-
-function normalizeTags(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  const unique = new Set();
-  for (const tag of value) {
-    if (typeof tag !== "string") {
-      continue;
-    }
-    const trimmed = tag.trim();
-    if (trimmed) {
-      unique.add(trimmed);
+function normalizeTags(value, category) {
+  const set = new Set();
+  if (Array.isArray(value)) {
+    for (const tag of value) {
+      if (typeof tag !== "string") {
+        continue;
+      }
+      const trimmed = tag.trim();
+      if (trimmed.length > 0) {
+        set.add(trimmed);
+      }
     }
   }
-  return [...unique];
+
+  if (category) {
+    set.add(category);
+  }
+
+  return [...set];
 }
 
-function ensureUuid(value, warnings, pathHint) {
+function ensureId(value, warnings, hint) {
   if (typeof value === "string" && value.trim() !== "") {
-    return value;
+    return value.trim();
   }
   const generated = randomUUID();
-  warnings.push(`${pathHint} 缺少 id，已自动生成：${generated}`);
+  warnings.push(`${hint} 缺少 id，已自动生成 ${generated}`);
   return generated;
 }
 
-function normalizeTodoRow(rawTodo, index, warnings) {
-  if (!isObject(rawTodo)) {
-    warnings.push(`todos[${index}] 不是对象，已跳过。`);
+function normalizeTodo(raw, index, warnings) {
+  if (!isObject(raw)) {
+    warnings.push(`todos[${index}] 不是对象，已跳过`);
     return null;
   }
 
-  const id = ensureUuid(rawTodo.id, warnings, `todos[${index}]`);
-  const title = toString(rawTodo.title, "").trim() || `未命名任务-${index + 1}`;
-  const category = toString(rawTodo.category, "").trim() || "未分类";
-  const tags = normalizeTags(rawTodo.tags);
-  if (!tags.includes(category)) {
-    tags.unshift(category);
-  }
+  const id = ensureId(raw.id, warnings, `todos[${index}]`);
+  const title = toString(raw.title, "").trim() || `未命名任务 ${index + 1}`;
+  const category = toString(raw.category, "").trim() || "未分类";
 
   return {
     id,
     title,
-    subject: toNullableString(rawTodo.subject),
-    notes: toNullableString(rawTodo.notes),
+    subject: toNullableString(raw.subject),
+    notes: toNullableString(raw.notes),
     category,
-    tags,
-    priority: normalizePriority(rawTodo.priority),
-    status: normalizeStatus(rawTodo.status),
-    dueAt: toNullableString(rawTodo.due_at),
-    completedAt: toNullableString(rawTodo.completed_at),
-    createdAt: toString(rawTodo.created_at, new Date().toISOString()),
-    updatedAt: toString(rawTodo.updated_at, new Date().toISOString()),
+    tags: normalizeTags(raw.tags, category),
+    priority: normalizePriority(raw.priority),
+    status: normalizeStatus(raw.status),
+    dueAt: toNullableString(raw.due_at),
+    completedAt: toNullableString(raw.completed_at),
+    createdAt: toString(raw.created_at, new Date().toISOString()),
+    updatedAt: toString(raw.updated_at, new Date().toISOString()),
   };
 }
 
-function normalizeSessionRow(rawSession, index, warnings) {
-  if (!isObject(rawSession)) {
-    warnings.push(`focus_sessions[${index}] 不是对象，已跳过。`);
+function normalizeSession(raw, index, warnings) {
+  if (!isObject(raw)) {
+    warnings.push(`focus_sessions[${index}] 不是对象，已跳过`);
     return null;
   }
 
-  const id = ensureUuid(rawSession.id, warnings, `focus_sessions[${index}]`);
-  const totalTaskCount = toNonNegativeInteger(rawSession.total_task_count, 0);
-  const completedTaskCount = Math.min(toNonNegativeInteger(rawSession.completed_task_count, 0), totalTaskCount);
-  const completionRate = totalTaskCount > 0 ? Number((completedTaskCount / totalTaskCount).toFixed(4)) : 0;
+  const id = ensureId(raw.id, warnings, `focus_sessions[${index}]`);
+  const totalTaskCount = toNonNegativeInteger(raw.total_task_count, 0);
+  const completedTaskCount = Math.min(
+    toNonNegativeInteger(raw.completed_task_count, 0),
+    totalTaskCount,
+  );
 
   return {
     id,
-    state: rawSession.state === "ended" ? "ended" : "active",
-    startedAt: toString(rawSession.started_at, new Date().toISOString()),
-    endedAt: toNullableString(rawSession.ended_at),
-    elapsedSeconds: toNonNegativeInteger(rawSession.elapsed_seconds, 0),
+    state: raw.state === "ended" ? "ended" : "active",
+    startedAt: toString(raw.started_at, new Date().toISOString()),
+    endedAt: toNullableString(raw.ended_at),
+    elapsedSeconds: toNonNegativeInteger(raw.elapsed_seconds, 0),
     totalTaskCount,
     completedTaskCount,
-    completionRate,
-    createdAt: toString(rawSession.created_at, new Date().toISOString()),
-    updatedAt: toString(rawSession.updated_at, new Date().toISOString()),
+    completionRate:
+      totalTaskCount > 0 ? Number((completedTaskCount / totalTaskCount).toFixed(4)) : 0,
+    createdAt: toString(raw.created_at, new Date().toISOString()),
+    updatedAt: toString(raw.updated_at, new Date().toISOString()),
   };
 }
 
-function normalizeSessionTaskRefRow(rawRef, index, warnings) {
-  if (!isObject(rawRef)) {
-    warnings.push(`session_task_refs[${index}] 不是对象，已跳过。`);
+function normalizeSessionTask(raw, index, warnings, todoTitleById) {
+  if (!isObject(raw)) {
+    warnings.push(`session_task_refs[${index}] 不是对象，已跳过`);
     return null;
   }
 
-  const sessionId = toString(rawRef.session_id, "").trim();
+  const sessionId = toString(raw.session_id, "").trim();
   if (!sessionId) {
-    warnings.push(`session_task_refs[${index}] 缺少 session_id，已跳过。`);
+    warnings.push(`session_task_refs[${index}] 缺少 session_id，已跳过`);
     return null;
   }
 
+  const todoId = toNullableString(raw.todo_id);
   return {
-    id: ensureUuid(rawRef.id, warnings, `session_task_refs[${index}]`),
+    id: ensureId(raw.id, warnings, `session_task_refs[${index}]`),
     sessionId,
-    todoId: toNullableString(rawRef.todo_id),
-    titleSnapshot: toString(rawRef.title_snapshot, "").trim(),
-    orderIndex: toNonNegativeInteger(rawRef.order_index, 0),
-    completed: toBoolean(rawRef.is_completed_in_session),
-    completedAt: toNullableString(rawRef.completed_at),
-    createdAt: toString(rawRef.created_at, new Date().toISOString()),
-    updatedAt: toString(rawRef.updated_at, new Date().toISOString()),
+    todoId,
+    todoTitle: todoId ? todoTitleById.get(todoId) ?? null : null,
+    titleSnapshot: toNullableString(raw.title_snapshot),
+    orderIndex: toNonNegativeInteger(raw.order_index, 0),
+    completed: Boolean(raw.is_completed_in_session),
+    completedAt: toNullableString(raw.completed_at),
+    createdAt: toString(raw.created_at, new Date().toISOString()),
+    updatedAt: toString(raw.updated_at, new Date().toISOString()),
   };
 }
 
-function resolveFilePath(inputPath) {
-  return path.isAbsolute(inputPath) ? inputPath : path.resolve(process.cwd(), inputPath);
-}
-
-function toFilenameTimestamp(date) {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mi = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${yyyy}${mm}${dd}-${hh}${mi}${ss}`;
-}
-
-function toPosixPath(targetPath) {
-  return targetPath.split(path.sep).join("/");
-}
-
-async function buildMigrationPayload(raw, sourcePath) {
-  const warnings = [];
-  const todos = toArray(raw.todos)
-    .map((item, index) => normalizeTodoRow(item, index, warnings))
-    .filter((item) => item !== null);
-  const sessions = toArray(raw.focus_sessions)
-    .map((item, index) => normalizeSessionRow(item, index, warnings))
-    .filter((item) => item !== null);
-  const refs = toArray(raw.session_task_refs)
-    .map((item, index) => normalizeSessionTaskRefRow(item, index, warnings))
-    .filter((item) => item !== null);
-
-  const todoById = new Map(todos.map((todo) => [todo.id, todo.title]));
-  const refsBySessionId = new Map();
-
-  for (const ref of refs) {
-    const current = refsBySessionId.get(ref.sessionId) ?? [];
-    current.push(ref);
-    refsBySessionId.set(ref.sessionId, current);
+function toOutputPath(input) {
+  const date = new Date();
+  const ts = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+    "-",
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0"),
+  ].join("");
+  const filename = `${SCHEMA}-${ts}.json`;
+  if (input) {
+    return path.isAbsolute(input) ? input : path.resolve(process.cwd(), input);
   }
+  return path.resolve(process.cwd(), DEFAULT_OUTPUT_DIR, filename);
+}
 
-  for (const [, current] of refsBySessionId) {
-    current.sort((left, right) => left.orderIndex - right.orderIndex);
-  }
-
-  const sessionIdSet = new Set(sessions.map((session) => session.id));
-  const orphanSessionTasks = refs
-    .filter((ref) => !sessionIdSet.has(ref.sessionId))
-    .sort((left, right) => left.sessionId.localeCompare(right.sessionId) || left.orderIndex - right.orderIndex)
-    .map((ref) => ({
-      id: ref.id,
-      sessionId: ref.sessionId,
-      todoId: ref.todoId,
-      todoTitle: ref.todoId ? todoById.get(ref.todoId) ?? null : null,
-      titleSnapshot: ref.titleSnapshot || null,
-      orderIndex: ref.orderIndex,
-      completed: ref.completed,
-      completedAt: ref.completedAt,
-      createdAt: ref.createdAt,
-      updatedAt: ref.updatedAt,
-    }));
-
-  const mappedSessions = sessions.map((session) => {
-    const tasks = (refsBySessionId.get(session.id) ?? []).map((ref) => ({
-      id: ref.id,
-      todoId: ref.todoId,
-      todoTitle: ref.todoId ? todoById.get(ref.todoId) ?? null : null,
-      titleSnapshot: ref.titleSnapshot || null,
-      orderIndex: ref.orderIndex,
-      completed: ref.completed,
-      completedAt: ref.completedAt,
-      createdAt: ref.createdAt,
-      updatedAt: ref.updatedAt,
-    }));
-
-    return {
-      ...session,
-      tasks,
-    };
-  });
-
-  return {
-    schema: MIGRATION_SCHEMA,
-    exportedAt: new Date().toISOString(),
-    source: {
-      type: "pomlist-db.json",
-      version: Number.isFinite(Number(raw.version)) ? Number(raw.version) : null,
-      path: toPosixPath(path.relative(process.cwd(), sourcePath) || sourcePath),
-    },
-    summary: {
-      todoCount: todos.length,
-      sessionCount: mappedSessions.length,
-      sessionTaskCount: refs.length,
-      orphanSessionTaskCount: orphanSessionTasks.length,
-      warningCount: warnings.length,
-    },
-    warnings,
-    todos,
-    sessions: mappedSessions,
-    orphanSessionTasks,
-  };
+function normalizeSourcePath(filePath) {
+  const relative = path.relative(process.cwd(), filePath);
+  const normalized = relative && !relative.startsWith("..") ? relative : filePath;
+  return normalized.split(path.sep).join("/");
 }
 
 async function main() {
@@ -328,30 +247,94 @@ async function main() {
     return;
   }
 
-  const inputPath = resolveFilePath(options.input);
-  let outputPath = options.output ? resolveFilePath(options.output) : "";
-  if (!outputPath) {
-    const filename = `${MIGRATION_SCHEMA}-${toFilenameTimestamp(new Date())}.json`;
-    outputPath = resolveFilePath(path.join(DEFAULT_OUTPUT_DIR, filename));
-  }
+  const inputPath = path.isAbsolute(options.input)
+    ? options.input
+    : path.resolve(process.cwd(), options.input);
+  const outputPath = toOutputPath(options.output);
 
-  const sourceText = await fs.readFile(inputPath, "utf8");
-  const raw = JSON.parse(sourceText);
+  const rawText = await fs.readFile(inputPath, "utf8");
+  const raw = JSON.parse(rawText);
   if (!isObject(raw)) {
-    throw new Error("输入文件不是合法的 JSON 对象。");
+    throw new Error("输入 JSON 顶层必须是对象");
   }
 
-  const payload = await buildMigrationPayload(raw, inputPath);
+  const warnings = [];
+  const todos = toArray(raw.todos)
+    .map((item, index) => normalizeTodo(item, index, warnings))
+    .filter(Boolean);
+
+  const todoTitleById = new Map(todos.map((todo) => [todo.id, todo.title]));
+
+  const sessions = toArray(raw.focus_sessions)
+    .map((item, index) => normalizeSession(item, index, warnings))
+    .filter(Boolean);
+
+  const refs = toArray(raw.session_task_refs)
+    .map((item, index) => normalizeSessionTask(item, index, warnings, todoTitleById))
+    .filter(Boolean);
+
+  const refsBySession = new Map();
+  for (const ref of refs) {
+    const list = refsBySession.get(ref.sessionId) ?? [];
+    list.push(ref);
+    refsBySession.set(ref.sessionId, list);
+  }
+
+  for (const list of refsBySession.values()) {
+    list.sort((a, b) => a.orderIndex - b.orderIndex);
+  }
+
+  const sessionIdSet = new Set(sessions.map((session) => session.id));
+  const orphanSessionTasks = refs.filter((ref) => !sessionIdSet.has(ref.sessionId));
+
+  const sessionPayload = sessions.map((session) => ({
+    ...session,
+    tasks: refsBySession.get(session.id) ?? [],
+  }));
+
+  const user = toArray(raw.users)[0] ?? null;
+  const auth = isObject(raw.auth) ? raw.auth : null;
+
+  const payload = {
+    schema: SCHEMA,
+    exportedAt: new Date().toISOString(),
+    source: {
+      type: "pomlist-db.json",
+      version: Number.isFinite(Number(raw.version)) ? Number(raw.version) : null,
+      path: normalizeSourcePath(inputPath),
+    },
+    user: {
+      id: toNullableString(user?.id),
+      email: toNullableString(user?.email),
+      passcodeUpdatedAt: toNullableString(auth?.updated_at),
+      passcode:
+        typeof auth?.passcode === "string" && auth.passcode.length === 4
+          ? auth.passcode
+          : null,
+    },
+    todos,
+    sessions: sessionPayload,
+    orphanSessionTasks,
+    summary: {
+      todoCount: todos.length,
+      sessionCount: sessionPayload.length,
+      sessionTaskCount: refs.length,
+      orphanSessionTaskCount: orphanSessionTasks.length,
+      warningCount: warnings.length,
+    },
+    warnings,
+  };
+
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 
-  console.log(`导出完成：${toPosixPath(path.relative(process.cwd(), outputPath) || outputPath)}`);
+  console.log(`导出完成: ${normalizeSourcePath(outputPath)}`);
   console.log(
-    `统计：任务 ${payload.summary.todoCount}，会话 ${payload.summary.sessionCount}，会话任务 ${payload.summary.sessionTaskCount}，告警 ${payload.summary.warningCount}`,
+    `任务 ${payload.summary.todoCount}，会话 ${payload.summary.sessionCount}，会话任务 ${payload.summary.sessionTaskCount}，告警 ${payload.summary.warningCount}`,
   );
 }
 
 main().catch((error) => {
-  console.error("导出失败：", error instanceof Error ? error.message : error);
-  process.exitCode = 1;
+  console.error("导出失败:", error instanceof Error ? error.message : error);
+  process.exit(1);
 });
