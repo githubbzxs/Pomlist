@@ -579,7 +579,7 @@ export default function TodayPage() {
       await endSession(session.id);
       setLastEndedSeconds(endedSeconds);
       await loadData("refresh");
-      setPanel("down");
+      setPanel("center");
     } catch (endError) {
       setError(errorToText(endError));
     } finally {
