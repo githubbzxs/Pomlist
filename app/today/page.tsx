@@ -934,7 +934,7 @@ export default function TodayPage() {
           {session ? (
             <button
               type="button"
-              className="btn-primary h-11 grow text-sm"
+              className="btn-primary home-main-action-btn grow text-sm"
               onClick={() => void handleEndSession()}
               disabled={ending}
             >
@@ -943,7 +943,7 @@ export default function TodayPage() {
           ) : (
             <button
               type="button"
-              className="btn-primary home-start-btn h-11 grow text-sm"
+              className="btn-primary home-main-action-btn home-start-btn grow text-sm"
               onClick={() => void handleStartSession()}
               disabled={plannedTodos.length === 0 || starting}
             >
