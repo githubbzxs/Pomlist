@@ -898,7 +898,7 @@ export default function TodayPage() {
 
         <div className="mobile-main-task-area">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="page-title text-lg font-bold text-main">任务</h2>
+            <h2 className="page-title text-lg font-bold text-main">Tasks</h2>
           </div>
 
           {centerTasks.length === 0 ? null : (
@@ -961,7 +961,7 @@ export default function TodayPage() {
     <div className="canvas-panel-content panel-glass-task">
       <header className="canvas-panel-header">
         <div>
-          <h2 className="page-title text-2xl font-bold text-main">Task</h2>
+          <h2 className="page-title text-2xl font-bold text-main">Tasks</h2>
         </div>
         <div className="flex items-center gap-2">
           <button
