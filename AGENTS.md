@@ -302,3 +302,34 @@
   - Why：用户确认外层框是需要保留的视觉锚点。
   - Impact：`app/today/page.tsx`、`app/globals.css`。
   - Verify：`today` 页外层边框与阴影可见，内部主区仍为无框布局。
+
+## Decisions（增量）
+
+- **[2026-02-15] Glass 视觉系统重构**：全站统一为“深黑基底 + 拟物玻璃 + 克制蓝强调”。
+  - Why：按最新设计目标彻底提升视觉一致性与质感。
+  - Impact：`app/globals.css`、`app/layout.tsx`、`public/manifest.webmanifest`。
+  - Verify：基础控件、卡片、输入、按钮、移动画布与弹层样式统一。
+
+- **[2026-02-15] Today 三面板重塑**：在保留交互结构前提下，中心/任务/统计三面板切换到同一玻璃层级。
+  - Why：保留既有流程并消除页面割裂感。
+  - Impact：`app/today/page.tsx`、`components/mobile/task-picker-drawer.tsx`。
+  - Verify：布局不变，视觉层次明显提升，任务抽屉与主面板风格一致。
+
+- **[2026-02-15] 图表风格重绘**：趋势图和分布图统一为玻璃容器、低饱和蓝网格与渐变主线。
+  - Why：避免图表与页面主视觉脱节。
+  - Impact：`components/charts/trend-chart.tsx`、`components/charts/distribution-chart.tsx`、`app/analytics/page.tsx`。
+  - Verify：空态、坐标、网格、主线和进度条均符合新风格。
+
+- **[2026-02-15] 核心页面视觉统一**：`auth/focus/todo` 与壳层页面文案编码统一修复。
+  - Why：解决旧页面视觉和文案编码不一致问题。
+  - Impact：`app/auth/page.tsx`、`app/focus/page.tsx`、`app/todo/page.tsx`、`app/page.tsx`、`components/app-shell.tsx`、`app/offline/page.tsx`。
+  - Verify：页面文案正常显示，主视觉语言一致。
+
+## Commands（增量）
+
+- **[2026-02-15] 全量校验**：`npm run lint && npm run test && npm run typecheck && npm run build`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：UI 彻底重构已在本地完成并通过全量校验（未做远端部署）。
+- **[2026-02-15] 下一步**：根据你的主观审美反馈，继续微调玻璃强度、字重和图表密度。
