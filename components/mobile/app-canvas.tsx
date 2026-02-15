@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, TouchEvent } from "react";
 
-export type CanvasPanel = "center" | "right" | "down";
+export type CanvasPanel = "center" | "right" | "up" | "down";
 
 type AppCanvasProps = {
   panel: CanvasPanel;
   onPanelChange: (panel: CanvasPanel) => void;
   center: ReactNode;
   right: ReactNode;
+  up: ReactNode;
   down: ReactNode;
 };
 
@@ -27,6 +28,7 @@ const SWIPE_THRESHOLD = 56;
 const PANEL_OFFSET: Record<CanvasPanel, { x: number; y: number }> = {
   center: { x: 0, y: 0 },
   right: { x: 1, y: 0 },
+  up: { x: 0, y: -1 },
   down: { x: 0, y: 1 },
 };
 
@@ -34,6 +36,9 @@ function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): C
   if (current === "center") {
     if (direction === "left") {
       return "right";
+    }
+    if (direction === "down") {
+      return "up";
     }
     if (direction === "up") {
       return "down";
@@ -44,6 +49,9 @@ function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): C
   if (current === "right" && direction === "right") {
     return "center";
   }
+  if (current === "up" && direction === "up") {
+    return "center";
+  }
   if (current === "down" && direction === "down") {
     return "center";
   }
@@ -51,7 +59,7 @@ function resolvePanelBySwipe(current: CanvasPanel, direction: SwipeDirection): C
   return current;
 }
 
-export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanvasProps) {
+export function AppCanvas({ panel, onPanelChange, center, right, up, down }: AppCanvasProps) {
   const [desktopEdgeNavEnabled, setDesktopEdgeNavEnabled] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -87,10 +95,16 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
           ariaLabel: "切换到任务页面",
         },
         {
+          key: "go-up",
+          className: "canvas-edge canvas-edge-top",
+          next: "up",
+          ariaLabel: "切换到历史页面",
+        },
+        {
           key: "go-down",
           className: "canvas-edge canvas-edge-bottom",
           next: "down",
-          ariaLabel: "切换到历史页面",
+          ariaLabel: "切换到统计页面",
         },
       ];
     }
@@ -100,6 +114,17 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
         {
           key: "back-left",
           className: "canvas-edge canvas-edge-left",
+          next: "center",
+          ariaLabel: "返回专注页面",
+        },
+      ];
+    }
+
+    if (panel === "up") {
+      return [
+        {
+          key: "back-bottom",
+          className: "canvas-edge canvas-edge-bottom",
           next: "center",
           ariaLabel: "返回专注页面",
         },
@@ -160,6 +185,7 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
       <div className="app-canvas-viewport" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div className="app-canvas-track" style={trackStyle}>
           <section className="app-canvas-panel app-canvas-panel-center">{center}</section>
+          <section className="app-canvas-panel app-canvas-panel-up">{up}</section>
           <section className="app-canvas-panel app-canvas-panel-right">{right}</section>
           <section className="app-canvas-panel app-canvas-panel-down">{down}</section>
         </div>

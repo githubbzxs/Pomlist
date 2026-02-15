@@ -491,6 +491,11 @@ button {
   left: 100%;
 }
 
+.app-canvas-panel-up {
+  top: -100%;
+  left: 0;
+}
+
 .app-canvas-panel-down {
   top: 100%;
   left: 0;
