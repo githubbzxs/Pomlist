@@ -237,6 +237,7 @@ export default function TodayPage() {
   const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [session, setSession] = useState<ActiveSession | null>(null);
+  const [lastEndedSeconds, setLastEndedSeconds] = useState<number | null>(null);
   const [plannedIds, setPlannedIds] = useState<string[]>([]);
   const [draftChecks, setDraftChecks] = useState<Record<string, boolean>>({});
 
@@ -554,6 +555,7 @@ export default function TodayPage() {
     try {
       const created = await startSession(plannedTodos.map((todo) => todo.id));
       setSession(created);
+      setLastEndedSeconds(null);
       setPlannedIds(created.tasks.map((task) => task.todoId));
       setDraftChecks({});
       setPanel("center");
@@ -570,10 +572,12 @@ export default function TodayPage() {
       return;
     }
 
+    const endedSeconds = displaySeconds;
     setEnding(true);
     setError(null);
     try {
       await endSession(session.id);
+      setLastEndedSeconds(endedSeconds);
       await loadData("refresh");
       setPanel("down");
     } catch (endError) {
@@ -818,7 +822,14 @@ export default function TodayPage() {
 
       <section className="mobile-main-panel mobile-main-panel--frameless panel-glass-home panel-glass-stack grow">
         <div className="mobile-main-timer">
-          <p className="timer-display page-title">{formatClock(displaySeconds)}</p>
+          {session ? null : lastEndedSeconds !== null ? (
+            <>
+              <p className="timer-display page-title">{formatClock(lastEndedSeconds)}</p>
+              <p className="mt-2 text-xs text-subtle">上次结束用时</p>
+            </>
+          ) : (
+            <p className="mt-1 text-xs text-subtle">启动专注后隐藏时间，结束后显示用时</p>
+          )}
           <div className="progress-track mt-2">
             <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
           </div>
