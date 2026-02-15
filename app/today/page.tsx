@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { DistributionChart } from "@/components/charts/distribution-chart";
 import { FeedbackState } from "@/components/feedback-state";
 import { AppCanvas, type CanvasPanel } from "@/components/mobile/app-canvas";
 import { TaskPickerDrawer, type CreateTaskInput } from "@/components/mobile/task-picker-drawer";
@@ -13,7 +12,7 @@ import {
   deleteTodo,
   endSession,
   getActiveSession,
-  getDashboardMetrics,
+  getSessionHistory,
   listTodos,
   startSession,
   toggleSessionTask,
@@ -21,10 +20,7 @@ import {
 } from "@/lib/client/pomlist-api";
 import type {
   ActiveSession,
-  DashboardMetrics,
-  DistributionBucket,
-  EfficiencyMetrics,
-  PeriodMetrics,
+  SessionHistoryItem,
   TodoItem,
 } from "@/lib/client/types";
 
@@ -44,33 +40,6 @@ const COMMON_TAG_COLORS = ["#2563eb", "#06b6d4", "#14b8a6", "#22c55e", "#eab308"
 const DEFAULT_TAG_COLOR = COMMON_TAG_COLORS[0];
 const LEGACY_DEFAULT_TAG_COLOR = "#1d4ed8";
 
-const EMPTY_DASHBOARD: DashboardMetrics = {
-  date: "",
-  sessionCount: 0,
-  totalDurationSeconds: 0,
-  completionRate: 0,
-  streakDays: 0,
-  completedTaskCount: 0,
-};
-
-const EMPTY_PERIOD: PeriodMetrics = {
-  sessionCount: 0,
-  totalDurationSeconds: 0,
-  completedTaskCount: 0,
-  completionRate: 0,
-};
-
-const EMPTY_EFFICIENCY: EfficiencyMetrics = {
-  tasksPerHour: 0,
-  avgCompletionRate: 0,
-  avgSessionDurationSeconds: 0,
-  periodDelta: {
-    sessionCount: 0,
-    totalDurationSeconds: 0,
-    completionRate: 0,
-  },
-};
-
 function formatClock(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds));
   const minute = Math.floor(safeSeconds / 60);
@@ -78,14 +47,21 @@ function formatClock(seconds: number): string {
   return `${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
 }
 
-function formatDuration(seconds: number): string {
-  const minute = Math.max(0, Math.floor(seconds / 60));
-  if (minute < 60) {
-    return `${minute} 分钟`;
+function formatDateTime(isoText: string | null): string {
+  if (!isoText) {
+    return "时间未知";
   }
-  const hour = Math.floor(minute / 60);
-  const remain = minute % 60;
-  return `${hour} 小时 ${remain} 分钟`;
+  const date = new Date(isoText);
+  if (Number.isNaN(date.getTime())) {
+    return isoText;
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 function errorToText(error: unknown): string {
@@ -240,9 +216,9 @@ export default function TodayPage() {
 
   const [error, setError] = useState<string | null>(null);
 
-  const [dashboard, setDashboard] = useState<DashboardMetrics>(EMPTY_DASHBOARD);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [session, setSession] = useState<ActiveSession | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>([]);
   const [lastEndedSeconds, setLastEndedSeconds] = useState<number | null>(null);
   const [plannedIds, setPlannedIds] = useState<string[]>([]);
   const [draftChecks, setDraftChecks] = useState<Record<string, boolean>>({});
@@ -423,32 +399,6 @@ export default function TodayPage() {
       });
   }, [todos]);
 
-  const period = dashboard.period ?? {
-    today: {
-      sessionCount: dashboard.sessionCount,
-      totalDurationSeconds: dashboard.totalDurationSeconds,
-      completedTaskCount: dashboard.completedTaskCount,
-      completionRate: dashboard.completionRate,
-    },
-    last7: EMPTY_PERIOD,
-    last30: EMPTY_PERIOD,
-  };
-
-  const categoryStats = dashboard.categoryStats ?? [];
-  const hourlyDistribution = useMemo(() => dashboard.hourlyDistribution ?? [], [dashboard.hourlyDistribution]);
-  const efficiency = dashboard.efficiency ?? EMPTY_EFFICIENCY;
-  const timeDistribution = useMemo<DistributionBucket[]>(
-    () =>
-      hourlyDistribution
-        .filter((item) => item.sessionCount > 0 || item.totalDurationSeconds > 0)
-        .map((item) => ({
-          bucketLabel: `${String(item.hour).padStart(2, "0")}:00`,
-          sessionCount: item.sessionCount,
-          totalDurationSeconds: item.totalDurationSeconds,
-        })),
-    [hourlyDistribution],
-  );
-
   const loadData = useCallback(async (mode: LoadMode) => {
     if (mode === "initial") {
       setInitialLoading(true);
@@ -456,20 +406,20 @@ export default function TodayPage() {
     setError(null);
 
     const results = await Promise.allSettled([
-      getDashboardMetrics(),
       getActiveSession(),
       listTodos(),
+      getSessionHistory(),
     ]);
 
-    const [dashboardResult, sessionResult, todoResult] = results;
+    const [sessionResult, todoResult, historyResult] = results;
 
-    const nextDashboard = dashboardResult.status === "fulfilled" ? dashboardResult.value : EMPTY_DASHBOARD;
     const nextSession = sessionResult.status === "fulfilled" ? sessionResult.value : null;
     const nextTodos = todoResult.status === "fulfilled" ? todoResult.value : [];
+    const nextHistory = historyResult.status === "fulfilled" ? historyResult.value : [];
 
-    setDashboard(nextDashboard);
     setSession(nextSession);
     setTodos(nextTodos);
+    setSessionHistory(nextHistory);
 
     const pendingIds = new Set(nextTodos.filter((todo) => todo.status === "pending").map((todo) => todo.id));
 
@@ -864,15 +814,11 @@ export default function TodayPage() {
               <p className="timer-display page-title">{formatClock(lastEndedSeconds)}</p>
               <p className="mt-2 text-xs text-subtle">上次结束用时</p>
             </>
-          ) : (
-            <p className="mt-1 text-xs text-subtle">启动专注后隐藏时间，结束后显示用时</p>
-          )}
+          ) : null}
           <div className="progress-track mt-2">
             <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
           </div>
-          <p className="mt-2 text-xs text-subtle">
-            {totalCount > 0 ? `${completedCount}/${totalCount}` : "尚未添加任务"}
-          </p>
+          <p className="mt-2 text-xs text-subtle">{completedCount}/{totalCount}</p>
         </div>
 
         <div className="mobile-main-divider panel-glass-divider" />
@@ -885,9 +831,7 @@ export default function TodayPage() {
             </span>
           </div>
 
-          {centerTasks.length === 0 ? (
-            <p className="task-empty">当前没有任务，先添加再开始。</p>
-          ) : (
+          {centerTasks.length === 0 ? null : (
             <div className="md-task-list home-task-list panel-glass-list">
               {centerTasks.map((task) => (
                 <button
@@ -1263,115 +1207,54 @@ export default function TodayPage() {
     </div>
   );
 
-  const maxCategorySeconds = Math.max(1, ...categoryStats.map((item) => item.totalDurationSeconds));
-
   const downPanel = (
     <div className="canvas-panel-content panel-glass-analytics">
       <header className="canvas-panel-header">
         <div>
-          <h2 className="page-title text-2xl font-bold text-main">Statistic</h2>
-          <p className="subtle-kicker">趋势、效率与分布</p>
+          <h2 className="page-title text-2xl font-bold text-main">History</h2>
+          <p className="subtle-kicker">完成钟历史记录</p>
         </div>
       </header>
 
-      <section className="analytics-grid stats-overview-grid">
-        <article className="glass-metric p-4">
-          <p className="metric-label">今日任务钟</p>
-          <p className="metric-value page-title mt-2">{period.today.sessionCount}</p>
-        </article>
-        <article className="glass-metric p-4">
-          <p className="metric-label">今日完成任务</p>
-          <p className="metric-value page-title mt-2">{period.today.completedTaskCount}</p>
-        </article>
-        <article className="glass-metric p-4">
-          <p className="metric-label">今日时长</p>
-          <p className="metric-value page-title mt-2 text-lg">{formatDuration(period.today.totalDurationSeconds)}</p>
-        </article>
-        <article className="glass-metric p-4">
-          <p className="metric-label">今日完成率 / 连续天数</p>
-          <p className="metric-value page-title mt-2 text-lg">
-            {Math.round(period.today.completionRate)}% · {dashboard.streakDays} 天
-          </p>
-        </article>
-      </section>
+      <section className="mobile-card glass-card-panel grow">
+        {sessionHistory.length === 0 ? (
+          <p className="task-empty">暂无完成钟记录</p>
+        ) : (
+          <ul className="library-list">
+            {sessionHistory.map((item) => {
+              const finishedAt = item.endedAt ?? item.startedAt;
+              const previewTitles = item.tasks
+                .map((task) => task.title.trim())
+                .filter((title) => title.length > 0)
+                .slice(0, 3);
 
-      <section className="mobile-card glass-card-panel">
-        <h3 className="page-title text-lg font-bold text-main">周期视角</h3>
-        <p className="stats-section-subtitle">近 7 天与 30 天数据对照</p>
-        <div className="period-grid mt-3">
-          <article className="panel-solid p-3">
-            <p className="text-xs text-subtle">近 7 天</p>
-            <p className="mt-2 text-sm text-main">任务钟 {period.last7.sessionCount}</p>
-            <p className="text-sm text-main">完成率 {Math.round(period.last7.completionRate)}%</p>
-            <p className="text-xs text-subtle">{formatDuration(period.last7.totalDurationSeconds)}</p>
-          </article>
-          <article className="panel-solid p-3">
-            <p className="text-xs text-subtle">近 30 天</p>
-            <p className="mt-2 text-sm text-main">任务钟 {period.last30.sessionCount}</p>
-            <p className="text-sm text-main">完成率 {Math.round(period.last30.completionRate)}%</p>
-            <p className="text-xs text-subtle">{formatDuration(period.last30.totalDurationSeconds)}</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="mobile-card glass-card-panel">
-        <h3 className="page-title text-lg font-bold text-main">效率视角</h3>
-        <p className="stats-section-subtitle">单钟效率与周期变化</p>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-          <div className="panel-solid p-3">
-            <p className="text-[11px] text-subtle">每小时完成</p>
-            <p className="mt-1 text-sm font-semibold text-main">{efficiency.tasksPerHour}</p>
-          </div>
-          <div className="panel-solid p-3">
-            <p className="text-[11px] text-subtle">平均完成率</p>
-            <p className="mt-1 text-sm font-semibold text-main">{Math.round(efficiency.avgCompletionRate)}%</p>
-          </div>
-          <div className="panel-solid p-3">
-            <p className="text-[11px] text-subtle">平均单钟时长</p>
-            <p className="mt-1 text-sm font-semibold text-main">{formatDuration(efficiency.avgSessionDurationSeconds)}</p>
-          </div>
-        </div>
-        <p className="mt-3 text-xs text-subtle">
-          与前一周期对比：任务钟 {efficiency.periodDelta.sessionCount >= 0 ? "+" : ""}
-          {efficiency.periodDelta.sessionCount}，时长 {efficiency.periodDelta.totalDurationSeconds >= 0 ? "+" : ""}
-          {formatDuration(Math.abs(efficiency.periodDelta.totalDurationSeconds))}，完成率 
-          {efficiency.periodDelta.completionRate >= 0 ? "+" : ""}
-          {efficiency.periodDelta.completionRate}%
-        </p>
-      </section>
-
-      <section className="mobile-card glass-card-panel">
-        <h3 className="page-title text-lg font-bold text-main">标签贡献（一级）</h3>
-        {categoryStats.length === 0 ? null : (
-          <div className="mt-3 space-y-3">
-            {categoryStats.map((item) => {
-              const width = (item.totalDurationSeconds / maxCategorySeconds) * 100;
               return (
-                <div key={item.category}>
-                  <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-main">{item.category}</span>
-                    <span className="text-subtle">
-                      {item.completedCount}/{item.taskCount} 路 {Math.round(item.completionRate)}%
-                    </span>
+                <li key={item.id} className="library-item glass-item">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-main">{formatDateTime(finishedAt)}</p>
+                      <span className="text-xs text-subtle">{formatClock(item.elapsedSeconds)}</span>
+                    </div>
+
+                    <div className="task-meta-row mt-2">
+                      <span className="task-pill">
+                        完成 {item.completedTaskCount}/{item.totalTaskCount}
+                      </span>
+                      <span className="task-pill task-pill-tag">完成率 {Math.round(item.completionRate)}%</span>
+                    </div>
+
+                    {previewTitles.length > 0 ? (
+                      <p className="task-content-preview">
+                        {previewTitles.join(" · ")}
+                        {item.tasks.length > previewTitles.length ? ` · +${item.tasks.length - previewTitles.length}` : ""}
+                      </p>
+                    ) : null}
                   </div>
-                  <div className="h-2 rounded-full bg-[rgba(148,163,184,0.2)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)]"
-                      style={{ width: `${Math.max(6, width)}%` }}
-                    />
-                  </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
-      </section>
-
-      <section className="mobile-card glass-card-panel glass-chart">
-        <h3 className="page-title text-lg font-bold text-main">时间分布</h3>
-        <div className="mt-3">
-          <DistributionChart buckets={timeDistribution} />
-        </div>
       </section>
     </div>
   );

@@ -31,6 +31,17 @@ export type ActiveSession = {
   tasks: SessionTask[];
 };
 
+export type SessionHistoryItem = {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  elapsedSeconds: number;
+  totalTaskCount: number;
+  completedTaskCount: number;
+  completionRate: number;
+  tasks: SessionTask[];
+};
+
 export type CategoryStatsItem = {
   category: string;
   taskCount: number;

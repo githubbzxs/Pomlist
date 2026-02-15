@@ -5,6 +5,7 @@ import type {
   AuthCredentials,
   DashboardMetrics,
   DistributionBucket,
+  SessionHistoryItem,
   TodoItem,
   TrendPoint,
 } from "@/lib/client/types";
@@ -45,6 +46,26 @@ interface ActiveSessionPayload {
   }>;
 }
 
+type SessionHistoryPayload = Array<{
+  session: {
+    id: string;
+    state: "ended";
+    startedAt: string;
+    endedAt: string | null;
+    elapsedSeconds: number;
+    totalTaskCount: number;
+    completedTaskCount: number;
+    completionRate: number;
+  };
+  tasks: Array<{
+    ref: {
+      todoId: string;
+      isCompletedInSession: boolean;
+    };
+    displayTitle: string;
+  }>;
+}>;
+
 function normalizeTodo(item: TodoItem): TodoItem {
   const category = normalizeTodoCategory((item as TodoItem & { category?: unknown }).category) ?? DEFAULT_TODO_CATEGORY;
   const tags =
@@ -73,6 +94,23 @@ function mapActiveSession(payload: ActiveSessionPayload): ActiveSession {
   return {
     id: payload.session.id,
     state: payload.session.state,
+    startedAt: payload.session.startedAt,
+    endedAt: payload.session.endedAt,
+    elapsedSeconds: payload.session.elapsedSeconds,
+    totalTaskCount: payload.session.totalTaskCount,
+    completedTaskCount: payload.session.completedTaskCount,
+    completionRate: payload.session.completionRate,
+    tasks: payload.tasks.map((item) => ({
+      todoId: item.ref.todoId,
+      title: item.displayTitle,
+      completed: item.ref.isCompletedInSession,
+    })),
+  };
+}
+
+function mapSessionHistoryItem(payload: SessionHistoryPayload[number]): SessionHistoryItem {
+  return {
+    id: payload.session.id,
     startedAt: payload.session.startedAt,
     endedAt: payload.session.endedAt,
     elapsedSeconds: payload.session.elapsedSeconds,
@@ -207,6 +245,13 @@ export async function endSession(sessionId: string): Promise<void> {
     method: "POST",
     body: JSON.stringify({}),
   });
+}
+
+export async function getSessionHistory(limit = 30): Promise<SessionHistoryItem[]> {
+  const numericLimit = Number.isFinite(limit) ? limit : 30;
+  const safeLimit = Math.min(120, Math.max(1, Math.floor(numericLimit)));
+  const payload = await apiRequest<SessionHistoryPayload>(`/api/sessions/history?limit=${safeLimit}`);
+  return payload.map(mapSessionHistoryItem);
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {

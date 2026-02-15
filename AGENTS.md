@@ -434,3 +434,20 @@
 
 - **[2026-02-15] 当前状态**：`main` 已推送至 `c0dcf45`，大陆 VPS 已部署并回源正常。
 - **[2026-02-15] 下一步**：如需我可继续把 `today` 的“周期视角”文案从“近 7 天与 30 天”同步改成与当前展示完全一致。
+
+## Decisions（增量）
+
+- **[2026-02-15] Today 上滑页改为历史记录**：上滑页从统计视图改为“完成钟历史”，并新增历史接口。
+  - Why：对齐“上页显示历史记录”的新交互需求。
+  - Impact：`app/today/page.tsx`、`app/api/sessions/history/route.ts`、`lib/client/pomlist-api.ts`、`lib/client/types.ts`、`components/mobile/app-canvas.tsx`。
+  - Verify：`npm run lint && npm run test && npm run typecheck && npm run build` 通过；`/api/sessions/history` 返回已完成会话列表。
+
+- **[2026-02-15] 主页文案收敛**：移除“启动专注后隐藏时间，结束后显示用时 / 尚未添加任务 / 当前没有任务，先添加再开始。”
+  - Why：按最新视觉文案要求减少干扰信息。
+  - Impact：`app/today/page.tsx`。
+  - Verify：主页不再出现上述三段文字，开始/结束逻辑保持不变。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：两项需求已在本地完成并通过全量校验，等待大陆 VPS 重部署。
+- **[2026-02-15] 下一步**：按既定流程在大陆 VPS 执行重建并验收历史页展示。

@@ -90,7 +90,7 @@ export function AppCanvas({ panel, onPanelChange, center, right, down }: AppCanv
           key: "go-down",
           className: "canvas-edge canvas-edge-bottom",
           next: "down",
-          ariaLabel: "切换到统计页面",
+          ariaLabel: "切换到历史页面",
         },
       ];
     }
