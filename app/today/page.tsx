@@ -2,7 +2,6 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
-import { TrendChart } from "@/components/charts/trend-chart";
 import { FeedbackState } from "@/components/feedback-state";
 import { AppCanvas, type CanvasPanel } from "@/components/mobile/app-canvas";
 import { TaskPickerDrawer, type CreateTaskInput } from "@/components/mobile/task-picker-drawer";
@@ -16,7 +15,6 @@ import {
   getActiveSession,
   getDashboardMetrics,
   getDistributionData,
-  getTrendData,
   listTodos,
   startSession,
   toggleSessionTask,
@@ -29,7 +27,6 @@ import type {
   EfficiencyMetrics,
   PeriodMetrics,
   TodoItem,
-  TrendPoint,
 } from "@/lib/client/types";
 
 type LoadMode = "initial" | "refresh";
@@ -232,7 +229,6 @@ export default function TodayPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [dashboard, setDashboard] = useState<DashboardMetrics>(EMPTY_DASHBOARD);
-  const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [session, setSession] = useState<ActiveSession | null>(null);
@@ -415,22 +411,19 @@ export default function TodayPage() {
       getDashboardMetrics(),
       getActiveSession(),
       listTodos(),
-      getTrendData(7),
       getDistributionData(30),
     ]);
 
-    const [dashboardResult, sessionResult, todoResult, trendResult, distributionResult] = results;
+    const [dashboardResult, sessionResult, todoResult, distributionResult] = results;
 
     const nextDashboard = dashboardResult.status === "fulfilled" ? dashboardResult.value : EMPTY_DASHBOARD;
     const nextSession = sessionResult.status === "fulfilled" ? sessionResult.value : null;
     const nextTodos = todoResult.status === "fulfilled" ? todoResult.value : [];
-    const nextTrend = trendResult.status === "fulfilled" ? trendResult.value : [];
     const nextDistribution = distributionResult.status === "fulfilled" ? distributionResult.value : [];
 
     setDashboard(nextDashboard);
     setSession(nextSession);
     setTodos(nextTodos);
-    setTrend(nextTrend);
     setDistribution(nextDistribution);
 
     const pendingIds = new Set(nextTodos.filter((todo) => todo.status === "pending").map((todo) => todo.id));
@@ -1327,13 +1320,6 @@ export default function TodayPage() {
             })}
           </div>
         )}
-      </section>
-
-      <section className="mobile-card glass-card-panel glass-chart">
-        <h3 className="page-title text-lg font-bold text-main">7 天趋势</h3>
-        <div className="mt-3">
-          <TrendChart points={trend} />
-        </div>
       </section>
 
       <section className="mobile-card glass-card-panel glass-chart">

@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { DistributionChart } from "@/components/charts/distribution-chart";
-import { TrendChart } from "@/components/charts/trend-chart";
 import { FeedbackState } from "@/components/feedback-state";
 import { ApiClientError } from "@/lib/client/api-client";
 import {
   getDashboardMetrics,
   getDistributionData,
-  getTrendData,
 } from "@/lib/client/pomlist-api";
-import type { DashboardMetrics, DistributionBucket, TrendPoint } from "@/lib/client/types";
+import type { DashboardMetrics, DistributionBucket } from "@/lib/client/types";
 
 function formatDuration(seconds: number): string {
   const minute = Math.floor(seconds / 60);
@@ -42,20 +40,17 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY_METRICS);
-  const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [distribution, setDistribution] = useState<DistributionBucket[]>([]);
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [dashboardData, trendData, distributionData] = await Promise.all([
+      const [dashboardData, distributionData] = await Promise.all([
         getDashboardMetrics(),
-        getTrendData(7),
         getDistributionData(30),
       ]);
       setMetrics(dashboardData);
-      setTrend(trendData);
       setDistribution(distributionData);
     } catch (loadError) {
       setError(errorToText(loadError));
@@ -116,14 +111,6 @@ export default function AnalyticsPage() {
           </button>
         </div>
         <p className="metric-value page-title mt-3 text-2xl">{formatDuration(metrics.totalDurationSeconds)}</p>
-      </section>
-
-      <section className="glass-card-panel mt-4">
-        <h2 className="page-title text-xl font-bold text-main">近 7 天趋势</h2>
-        <p className="stats-section-subtitle">按每日电量统计总时长</p>
-        <div className="mt-3">
-          <TrendChart points={trend} />
-        </div>
       </section>
 
       <section className="glass-card-panel mt-4">
