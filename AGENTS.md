@@ -576,112 +576,17 @@
 
 ## Decisions（增量）
 
-- **[2026-02-15] 迁移导出标准化**：新增 `PomlistMigrationV1` 导出脚本，将旧 `pomlist-db.json` 转换为结构化迁移文件。
-  - Why：为 iOS 迁移导入提供稳定中间格式，并保留告警与数据摘要用于核对。
-  - Impact：`tools/migration/export-pomlist-migration-v1.mjs`。
-  - Verify：执行 `node tools/migration/export-pomlist-migration-v1.mjs --help` 与实际导出命令，输出文件包含 `schema=PomlistMigrationV1`。
-
-- **[2026-02-15] iOS 未签名 IPA CI 落地**：新增 macOS GitHub Actions 工作流，自动探测工程并构建未签名 IPA artifact。
-  - Why：提供无需本地 Xcode 手工打包的统一产物链路，便于迁移验证与联调。
-  - Impact：`.github/workflows/ios-unsigned-ipa.yml`。
-  - Verify：触发 `iOS Unsigned IPA` 后可在 Artifacts 下载 `unsigned-ipa-<scheme>`。
-
-- **[2026-02-15] 迁移与构建文档补齐**：新增迁移导出与 IPA 工作流文档，并在 README 增加入口与执行命令。
-  - Why：降低新成员与多代理协作时的信息缺口，减少重复沟通成本。
-  - Impact：`docs/migration-export.md`、`docs/ios-unsigned-ipa.md`、`README.md`。
-  - Verify：按文档命令可完成迁移导出，并能定位到 workflow 使用说明。
+- **[2026-02-15] 技术路线回切 Web**：从 iOS 主线切回 Next.js Web 主线，并移除 `ios/` 目录与 iOS 专用工作流。
+  - Why：用户确认“还是 Web，删掉 iOS”。
+  - Impact：恢复 `app/`、`components/`、`lib/`、`public/`、`tests/`、`package.json` 等 Web 目录；删除 `ios/` 与 `.github/workflows/ios-unsigned-ipa.yml`。
+  - Verify：仓库根目录存在 Web 工程文件，`ios/` 不存在；`npm run lint && npm run test && npm run typecheck && npm run build` 通过。
 
 ## Commands（增量）
 
-- **[2026-02-15] 迁移导出**：`node tools/migration/export-pomlist-migration-v1.mjs`
-- **[2026-02-15] 指定输入输出导出**：`node tools/migration/export-pomlist-migration-v1.mjs --input data/pomlist-db.json --output tools/migration/output/PomlistMigrationV1.custom.json`
-- **[2026-02-15] 查看导出脚本帮助**：`node tools/migration/export-pomlist-migration-v1.mjs --help`
+- **[2026-02-15] 切回 Web 快照**：`git restore --source origin/archive/web-last --worktree --staged -- .`
+- **[2026-02-15] Web 全量校验**：`npm run lint && npm run test && npm run typecheck && npm run build`
 
 ## Status / Next（增量）
 
-- **[2026-02-15] 当前状态**：非 iOS 授权路径内的四项任务已完成（迁移脚本、IPA workflow、文档、记忆增补）。
-- **[2026-02-15] 下一步**：在 GitHub 上手动触发一次 `iOS Unsigned IPA`，确认目标 Scheme 的 artifact 产出与命名符合预期。
-
-## Decisions（增量）
-
-- **[2026-02-15] 主线重构为 iOS 原生**：仓库主线从 Next.js Web 切换为 SwiftUI + SwiftData（iOS 17+）。
-  - Why：按最新需求彻底转为 iOS App，并保留单人本地数据与原生交互体验。
-  - Impact：删除 Web 运行时代码与 Web CI，保留 `ios/`、`tools/migration/`、`docs/`。
-  - Verify：仓库根目录不再包含 Web 业务代码，`ios/project.yml` 可用于 XcodeGen 生成工程。
-
-- **[2026-02-15] 迁移协议定版**：新增 `PomlistMigrationV1` 导出/导入链路。
-  - Why：确保旧 `pomlist-db.json` 可全量迁移到 iOS 本地模型。
-  - Impact：`tools/migration/export-pomlist-migration-v1.mjs` 与 `ios/Sources/Services/PLMigrationService.swift`。
-  - Verify：`node tools/migration/export-pomlist-migration-v1.mjs --input data/pomlist-db.json --output tools/migration/output/PomlistMigrationV1-test.json` 成功。
-
-- **[2026-02-15] IPA 产物策略确认**：GitHub Actions 仅构建未签名 IPA。
-  - Why：当前流程由用户本地完成安装链路，不在 CI 内处理签名。
-  - Impact：`.github/workflows/ios-unsigned-ipa.yml` 使用 `CODE_SIGNING_ALLOWED=NO` 打包并上传 artifact。
-  - Verify：workflow 产物名为 `pomlist-ios-unsigned-ipa`，文件为 `Pomlist-unsigned.ipa`。
-
-## Commands（增量）
-
-- **[2026-02-15] 迁移导出（CLI）**：`node tools/migration/export-pomlist-migration-v1.mjs --input <db_json> --output <migration_json>`
-- **[2026-02-15] 本地生成 iOS 工程**：`cd ios && xcodegen generate`
-
-## Status / Next（增量）
-
-- **[2026-02-15] 当前状态**：Web -> iOS 代码切换、迁移工具、未签名 IPA 工作流与文档已完成。
-- **[2026-02-15] 下一步**：在 macOS 环境执行 `xcodegen + xcodebuild` 实机验证，并按你的本地安装链路完成未签名 IPA 安装验收。
-
-## Decisions（增量）
-
-- **[2026-02-15] 大陆测试机发布口径调整**：本轮重构后不再维持 Web 进程，测试机仅同步 iOS 主线代码。
-  - Why：仓库已彻底切换为 iOS 原生工程，Web 运行时与 Node 依赖已移除。
-  - Impact：大陆机 `C:\www\pomlist` 拉取到 `8725333` 后执行 `pm2 delete pomlist` 下线旧服务。
-  - Verify：`git rev-parse --short HEAD` 为 `8725333`，`pm2 ls` 仅保留 `caddy`。
-
-## Status / Next（增量）
-
-- **[2026-02-15] 当前状态**：主仓库与大陆测试机均已切换到 iOS 主线，旧 Web 进程已下线。
-- **[2026-02-15] 下一步**：在 macOS/GitHub Actions 完成未签名 IPA 构建并做真机安装验收。
-
-## Decisions（增量）
-
-- **[2026-02-15] Today 主架构切换**：解锁后主界面从 `TabView` 改为四向画布（中主页 / 右任务 / 下统计 / 上历史）。
-  - Why：按“尽量平移 Web 结构”的要求统一信息架构与操作路径。
-  - Impact：`ios/Sources/App/PomlistRootView.swift`、`ios/Sources/Views/Today/TodayCanvasView.swift`、`ios/Sources/Views/Today/TodayCanvasViewModel.swift`。
-  - Verify：中心页可左滑到任务、上滑到历史、下滑到统计，侧页可反向回中心。
-
-- **[2026-02-15] Liquid Glass 视觉系统落地**：新增统一玻璃卡片与按钮样式，并接入解锁页与 Today 画布。
-  - Why：满足“使用 SwiftUI 液态玻璃能力”的视觉要求，避免页面风格分裂。
-  - Impact：`ios/Sources/Components/Glass/PLLiquidGlass.swift`、`ios/Sources/Views/Unlock/UnlockView.swift`、`ios/Sources/Components/PLPanelCard.swift`、`ios/Sources/Components/PLMetricCard.swift`。
-  - Verify：主卡片、输入、按钮均使用同一套玻璃样式，交互按压反馈一致。
-
-- **[2026-02-15] 系统边界提升**：iOS 最低版本从 `17.0` 提升到 `18.0`。
-  - Why：按本轮决策仅面向最新系统能力，不再维护旧系统视觉兼容。
-  - Impact：`ios/project.yml`、`README.md`。
-  - Verify：XcodeGen 配置中的 deployment target 为 `iOS 18.0`。
-
-## Status / Next（增量）
-
-- **[2026-02-15] 当前状态**：Today 四向画布、任务管理弹层、历史与统计面板、解锁页 glass 风格已完成代码落地。
-- **[2026-02-15] 下一步**：在 macOS 环境执行 `xcodegen generate` 与 Xcode 编译，做一次真机手势与弹层交互验收。
-
-## Decisions（增量）
-
-- **[2026-02-15] iOS IPA CI 失败根因修复**：修复 `TodayCanvasView` 的 `ForEach` 推断与 `foregroundStyle` 三元类型问题，解除 CI `exit code 65`。
-  - Why：`iOS Unsigned IPA` 在 `Build archive (unsigned)` 阶段失败，日志定位到 `TodayCanvasView.swift` 的类型推断错误。
-  - Impact：`ios/Sources/Views/Today/TodayCanvasView.swift`。
-  - Verify：重新触发 workflow 后，归档与打包步骤通过并上传 artifact。
-
-- **[2026-02-15] GitHub Actions 验证通过**：`iOS Unsigned IPA` 手动触发 run `22034057851` 成功，push 触发 run `22034056492` 也成功。
-  - Why：按最新要求必须完成 Actions 构建验收并留档。
-  - Impact：`.github/workflows/ios-unsigned-ipa.yml` 产物链路。
-  - Verify：`gh run list --workflow ios-unsigned-ipa.yml` 显示两条 run 均为 `completed success`，artifact 为 `pomlist-ios-unsigned-ipa`。
-
-## Commands（增量）
-
-- **[2026-02-15] 触发 IPA 构建**：`gh workflow run ios-unsigned-ipa.yml --ref main`
-- **[2026-02-15] 观察构建结果**：`gh run watch 22034057851 --exit-status`
-- **[2026-02-15] 查看失败日志**：`gh run view 22034020124 --log-failed`
-
-## Status / Next（增量）
-
-- **[2026-02-15] 当前状态**：CI 构建链路恢复正常，未签名 IPA artifact 已由 GitHub Actions 成功产出。
-- **[2026-02-15] 下一步**：按需下载 `pomlist-ios-unsigned-ipa` 并进行真机安装验收。
+- **[2026-02-15] 当前状态**：仓库已切回 Web 代码形态，iOS 代码已删除并通过本地全量校验。
+- **[2026-02-15] 下一步**：按测试机规范在大陆 VPS 重部署 Web 版本并验收 `today` 页面回源。
