@@ -1,0 +1,209 @@
+name: iOS Unsigned IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_path:
+        description: "可选：指定 .xcodeproj 路径（与 workspace 二选一）"
+        required: false
+        type: string
+      workspace_path:
+        description: "可选：指定 .xcworkspace 路径（优先于 project）"
+        required: false
+        type: string
+      scheme:
+        description: "可选：指定 Scheme，不填时自动选择第一个"
+        required: false
+        type: string
+      configuration:
+        description: "构建配置"
+        required: false
+        default: Release
+        type: choice
+        options:
+          - Release
+          - Debug
+  push:
+    branches: ["main"]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-unsigned-ipa.yml"
+
+jobs:
+  unsigned-ipa:
+    name: Build Unsigned IPA
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect container and scheme
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          WORKSPACE_INPUT="${{ github.event.inputs.workspace_path }}"
+          PROJECT_INPUT="${{ github.event.inputs.project_path }}"
+          SCHEME_INPUT="${{ github.event.inputs.scheme }}"
+
+          if [[ -n "${WORKSPACE_INPUT}" ]]; then
+            CONTAINER_TYPE="workspace"
+            CONTAINER_PATH="${WORKSPACE_INPUT}"
+            if [[ ! -d "${CONTAINER_PATH}" ]]; then
+              echo "指定的 workspace 不存在：${CONTAINER_PATH}" >&2
+              exit 1
+            fi
+          elif [[ -n "${PROJECT_INPUT}" ]]; then
+            CONTAINER_TYPE="project"
+            CONTAINER_PATH="${PROJECT_INPUT}"
+            if [[ ! -d "${CONTAINER_PATH}" ]]; then
+              echo "指定的 project 不存在：${CONTAINER_PATH}" >&2
+              exit 1
+            fi
+          else
+            mapfile -t WORKSPACES < <(find . -maxdepth 3 -type d -name "*.xcworkspace" | sort)
+            mapfile -t PROJECTS < <(find . -maxdepth 3 -type d -name "*.xcodeproj" | sort)
+
+            if [[ "${#WORKSPACES[@]}" -gt 0 ]]; then
+              CONTAINER_TYPE="workspace"
+              CONTAINER_PATH="${WORKSPACES[0]}"
+            elif [[ "${#PROJECTS[@]}" -gt 0 ]]; then
+              CONTAINER_TYPE="project"
+              CONTAINER_PATH="${PROJECTS[0]}"
+            else
+              echo "未找到 .xcworkspace 或 .xcodeproj，无法构建 IPA。" >&2
+              exit 1
+            fi
+          fi
+
+          if [[ -n "${SCHEME_INPUT}" ]]; then
+            SCHEME="${SCHEME_INPUT}"
+          else
+            LIST_JSON="$(mktemp)"
+            if [[ "${CONTAINER_TYPE}" == "workspace" ]]; then
+              xcodebuild -list -json -workspace "${CONTAINER_PATH}" > "${LIST_JSON}"
+            else
+              xcodebuild -list -json -project "${CONTAINER_PATH}" > "${LIST_JSON}"
+            fi
+
+            SCHEME="$(python3 - "${LIST_JSON}" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, "r", encoding="utf-8") as f:
+    data = json.load(f)
+
+project = data.get("project", {})
+workspace = data.get("workspace", {})
+schemes = project.get("schemes") or workspace.get("schemes") or []
+
+if not schemes:
+    print("")
+else:
+    print(schemes[0])
+PY
+)"
+          fi
+
+          if [[ -z "${SCHEME}" ]]; then
+            echo "未检测到 Scheme，请在 workflow_dispatch 里显式传入 scheme。" >&2
+            exit 1
+          fi
+
+          echo "container_type=${CONTAINER_TYPE}" >> "${GITHUB_OUTPUT}"
+          echo "container_path=${CONTAINER_PATH}" >> "${GITHUB_OUTPUT}"
+          echo "scheme=${SCHEME}" >> "${GITHUB_OUTPUT}"
+          echo "configuration=${{ github.event.inputs.configuration || 'Release' }}" >> "${GITHUB_OUTPUT}"
+
+          echo "检测结果："
+          echo "- container_type=${CONTAINER_TYPE}"
+          echo "- container_path=${CONTAINER_PATH}"
+          echo "- scheme=${SCHEME}"
+
+      - name: Build unsigned .app
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DERIVED_DATA_PATH="${RUNNER_TEMP}/DerivedData"
+          CONTAINER_TYPE="${{ steps.detect.outputs.container_type }}"
+          CONTAINER_PATH="${{ steps.detect.outputs.container_path }}"
+          SCHEME="${{ steps.detect.outputs.scheme }}"
+          CONFIGURATION="${{ steps.detect.outputs.configuration }}"
+
+          mkdir -p "${DERIVED_DATA_PATH}"
+
+          if [[ "${CONTAINER_TYPE}" == "workspace" ]]; then
+            xcodebuild \
+              -workspace "${CONTAINER_PATH}" \
+              -scheme "${SCHEME}" \
+              -configuration "${CONFIGURATION}" \
+              -sdk iphoneos \
+              -derivedDataPath "${DERIVED_DATA_PATH}" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              clean build
+          else
+            xcodebuild \
+              -project "${CONTAINER_PATH}" \
+              -scheme "${SCHEME}" \
+              -configuration "${CONFIGURATION}" \
+              -sdk iphoneos \
+              -derivedDataPath "${DERIVED_DATA_PATH}" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              clean build
+          fi
+
+          APP_PATH="$(find "${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}-iphoneos" -maxdepth 1 -name "*.app" | head -n 1)"
+          if [[ -z "${APP_PATH}" ]]; then
+            echo "构建成功但未找到 .app 产物。" >&2
+            exit 1
+          fi
+
+          echo "APP_PATH=${APP_PATH}" >> "${GITHUB_ENV}"
+          echo "CONFIGURATION=${CONFIGURATION}" >> "${GITHUB_ENV}"
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SCHEME="${{ steps.detect.outputs.scheme }}"
+          OUTPUT_DIR="${GITHUB_WORKSPACE}/unsigned-ipa"
+          STAGE_DIR="${RUNNER_TEMP}/unsigned-ipa-stage"
+          IPA_PATH="${OUTPUT_DIR}/${SCHEME}-unsigned.ipa"
+
+          rm -rf "${STAGE_DIR}"
+          mkdir -p "${STAGE_DIR}/Payload"
+          mkdir -p "${OUTPUT_DIR}"
+
+          cp -R "${APP_PATH}" "${STAGE_DIR}/Payload/"
+
+          pushd "${STAGE_DIR}" > /dev/null
+          zip -qry "${IPA_PATH}" Payload
+          popd > /dev/null
+
+          {
+            echo "### iOS Unsigned IPA"
+            echo ""
+            echo "- Scheme: \`${SCHEME}\`"
+            echo "- Configuration: \`${CONFIGURATION}\`"
+            echo "- IPA: \`${IPA_PATH}\`"
+            echo "- App: \`${APP_PATH}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa-${{ steps.detect.outputs.scheme }}
+          path: unsigned-ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 14
