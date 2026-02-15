@@ -959,7 +959,6 @@ export default function TodayPage() {
       <header className="canvas-panel-header">
         <div>
           <h2 className="page-title text-2xl font-bold text-main">Task</h2>
-          <p className="subtle-kicker">任务库与标签管理</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -1285,7 +1284,6 @@ export default function TodayPage() {
       <header className="canvas-panel-header">
         <div>
           <h2 className="page-title text-2xl font-bold text-main">History</h2>
-          <p className="subtle-kicker">完成钟历史记录</p>
         </div>
       </header>
 
@@ -1339,7 +1337,6 @@ export default function TodayPage() {
       <header className="canvas-panel-header">
         <div>
           <h2 className="page-title text-2xl font-bold text-main">Statistic</h2>
-          <p className="subtle-kicker">趋势、效率与分布</p>
         </div>
       </header>
 

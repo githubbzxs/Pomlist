@@ -1506,8 +1506,8 @@ button {
 
 /* 浅色苹果风主题覆盖 */
 :root {
-  --font-content: "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Helvetica Neue", "Microsoft YaHei", sans-serif;
-  --font-display: "SF Pro Display", "SF Pro Text", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  --font-content: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", serif;
+  --font-display: "LXGW WenKai", "霞鹜文楷", "PingFang SC", "Microsoft YaHei", serif;
 
   --bg-0: #f5f5f7;
   --bg-1: #eef1f5;
