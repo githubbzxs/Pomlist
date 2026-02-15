@@ -1,24 +1,14 @@
-import SwiftData
-import SwiftUI
+﻿import SwiftUI
 
 struct FocusView: View {
-    let sessionService: PLSessionService
+    @ObservedObject var serviceHub: PLServiceHub
 
-    @Query(
-        sort: [
-            SortDescriptor(\PLTodo.isDone),
-            SortDescriptor(\PLTodo.updatedAt, order: .reverse)
-        ]
-    )
-    private var todos: [PLTodo]
-
-    @State private var selectedTodoIDs: Set<UUID> = []
-    @State private var plannedMinutes: Int = 25
+    @State private var todos: [PLTodo] = []
     @State private var activeSession: PLFocusSession?
-    @State private var elapsedSeconds: Int = 0
-    @State private var lastFinishedDuration: Int?
-    @State private var message: String?
+    @State private var selectedTodoIDs = Set<String>()
+    @State private var elapsedSeconds = 0
     @State private var ticker: Timer?
+    @State private var message: String?
 
     var body: some View {
         NavigationStack {
@@ -26,29 +16,20 @@ struct FocusView: View {
                 VStack(spacing: 14) {
                     PLPanelCard(title: "当前专注") {
                         if let activeSession {
-                            activeSessionContent(activeSession)
+                            activeSessionView(activeSession)
                         } else {
-                            idleSessionContent
-                        }
-                    }
-
-                    if let lastFinishedDuration {
-                        PLPanelCard(title: "上次完成") {
-                            Text(PLFormatters.minuteText(seconds: lastFinishedDuration))
-                                .font(.title3)
-                                .fontWeight(.semibold)
+                            idleView
                         }
                     }
 
                     PLPanelCard(title: "待选任务") {
-                        if selectableTodos.isEmpty {
-                            Text("暂无可选任务，请先到 Tasks 页面添加。")
-                                .font(.subheadline)
+                        if pendingTodos.isEmpty {
+                            Text("暂无待办任务，请先在任务页创建。")
                                 .foregroundStyle(.secondary)
                         } else {
-                            VStack(spacing: 10) {
-                                ForEach(selectableTodos) { todo in
-                                    todoSelectionRow(todo)
+                            VStack(spacing: 8) {
+                                ForEach(pendingTodos, id: \.id) { todo in
+                                    selectableRow(todo)
                                 }
                             }
                         }
@@ -56,32 +37,32 @@ struct FocusView: View {
                 }
                 .padding(16)
             }
-            .navigationTitle("Focus")
-            .onAppear {
-                reloadActiveSession()
+            .navigationTitle("专注")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("刷新") {
+                        reload()
+                    }
+                }
             }
-            .onDisappear {
-                stopTicker()
-            }
+            .onAppear(perform: reload)
+            .onDisappear(perform: stopTicker)
             .alert("提示", isPresented: .constant(message != nil), presenting: message) { _ in
-                Button("我知道了") { message = nil }
+                Button("知道了") { message = nil }
             } message: { text in
                 Text(text)
             }
         }
     }
 
-    private var selectableTodos: [PLTodo] {
-        todos.filter { !$0.isDone }
+    private var pendingTodos: [PLTodo] {
+        todos.filter { $0.status == "pending" }
     }
 
-    @ViewBuilder
-    private var idleSessionContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Stepper(value: $plannedMinutes, in: 5 ... 180, step: 5) {
-                Text("计划时长：\(plannedMinutes) 分钟")
-                    .font(.body)
-            }
+    private var idleView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("未开始")
+                .foregroundStyle(.secondary)
 
             Text("已选任务：\(selectedTodoIDs.count)")
                 .font(.subheadline)
@@ -91,44 +72,44 @@ struct FocusView: View {
                 startSession()
             }
             .buttonStyle(.borderedProminent)
-            .disabled(activeSession != nil)
+            .disabled(selectedTodoIDs.isEmpty)
         }
     }
 
-    @ViewBuilder
-    private func activeSessionContent(_ session: PLFocusSession) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func activeSessionView(_ session: PLFocusSession) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             Text(PLFormatters.durationText(seconds: elapsedSeconds))
-                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .font(.system(size: 42, weight: .bold, design: .rounded))
                 .monospacedDigit()
+                .contentTransition(.numericText())
 
-            Text("计划 \(session.plannedMinutes) 分钟")
+            Text("完成率 \(PLFormatters.rateText(session.completionRate))（\(session.completedTaskCount)/\(session.totalTaskCount)）")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             if !session.taskRefs.isEmpty {
-                Text("会话任务")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(session.taskRefs.sorted(by: { $0.createdAt < $1.createdAt })) { ref in
-                        HStack(spacing: 8) {
-                            Image(systemName: ref.wasDoneAtEnd ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(ref.wasDoneAtEnd ? .green : .secondary)
-                            Text(ref.todoTitleSnapshot)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            if !ref.categorySnapshot.isEmpty {
-                                PLTagBadge(text: ref.categorySnapshot, tint: .blue)
+                VStack(spacing: 8) {
+                    ForEach(session.taskRefs.sorted(by: { $0.orderIndex < $1.orderIndex }), id: \.id) { ref in
+                        Button {
+                            toggle(ref)
+                        } label: {
+                            HStack {
+                                Image(systemName: ref.isCompletedInSession ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(ref.isCompletedInSession ? .green : .secondary)
+                                Text(ref.titleSnapshot)
+                                    .foregroundStyle(.primary)
+                                Spacer()
                             }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
 
             HStack(spacing: 10) {
                 Button("结束") {
-                    finishSession(session)
+                    endSession(session)
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -140,7 +121,7 @@ struct FocusView: View {
         }
     }
 
-    private func todoSelectionRow(_ todo: PLTodo) -> some View {
+    private func selectableRow(_ todo: PLTodo) -> some View {
         Button {
             if selectedTodoIDs.contains(todo.id) {
                 selectedTodoIDs.remove(todo.id)
@@ -148,42 +129,35 @@ struct FocusView: View {
                 selectedTodoIDs.insert(todo.id)
             }
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: selectedTodoIDs.contains(todo.id) ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
                     .foregroundStyle(selectedTodoIDs.contains(todo.id) ? .blue : .secondary)
-
                 VStack(alignment: .leading, spacing: 4) {
                     Text(todo.title)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    if !todo.category.isEmpty || !todo.tags.isEmpty {
-                        HStack(spacing: 6) {
-                            if !todo.category.isEmpty {
-                                PLTagBadge(text: todo.category, tint: .indigo)
-                            }
-                            ForEach(todo.tags, id: \.self) { tag in
-                                PLTagBadge(text: tag, tint: .teal)
-                            }
+                    HStack(spacing: 6) {
+                        PLTagBadge(text: todo.category, tint: .indigo)
+                        ForEach(todo.tags, id: \.self) { tag in
+                            PLTagBadge(text: tag, tint: .teal)
                         }
                     }
                 }
-                Spacer(minLength: 0)
+                Spacer()
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private func reloadActiveSession() {
+    private func reload() {
         do {
-            activeSession = try sessionService.loadActiveSession()
-            if let session = activeSession {
-                elapsedSeconds = max(0, Int(Date().timeIntervalSince(session.startedAt)))
+            todos = try serviceHub.todoService?.fetchTodos(status: nil) ?? []
+            activeSession = try serviceHub.sessionService?.loadActiveSession()
+            if let activeSession {
+                elapsedSeconds = max(activeSession.elapsedSeconds, Int(Date().timeIntervalSince(activeSession.startedAt)))
                 startTicker()
             } else {
-                stopTicker()
                 elapsedSeconds = 0
+                stopTicker()
             }
         } catch {
             message = error.localizedDescription
@@ -192,23 +166,31 @@ struct FocusView: View {
 
     private func startSession() {
         do {
-            let selected = todos.filter { selectedTodoIDs.contains($0.id) }
-            activeSession = try sessionService.startSession(with: selected, plannedMinutes: plannedMinutes)
+            let picked = pendingTodos.filter { selectedTodoIDs.contains($0.id) }
+            activeSession = try serviceHub.sessionService?.startSession(with: picked)
+            selectedTodoIDs.removeAll()
             elapsedSeconds = 0
             startTicker()
+            reload()
         } catch {
             message = error.localizedDescription
         }
     }
 
-    private func finishSession(_ session: PLFocusSession) {
+    private func toggle(_ ref: PLSessionTaskRef) {
         do {
-            try sessionService.finishSession(session, elapsedSeconds: elapsedSeconds)
-            lastFinishedDuration = elapsedSeconds
-            activeSession = nil
-            elapsedSeconds = 0
+            try serviceHub.sessionService?.toggleTask(ref, completed: nil)
+            reload()
+        } catch {
+            message = error.localizedDescription
+        }
+    }
+
+    private func endSession(_ session: PLFocusSession) {
+        do {
+            try serviceHub.sessionService?.endSession(session, elapsedSeconds: elapsedSeconds)
             stopTicker()
-            selectedTodoIDs.removeAll()
+            reload()
         } catch {
             message = error.localizedDescription
         }
@@ -216,10 +198,9 @@ struct FocusView: View {
 
     private func cancelSession(_ session: PLFocusSession) {
         do {
-            try sessionService.cancelSession(session)
-            activeSession = nil
-            elapsedSeconds = 0
+            try serviceHub.sessionService?.cancelSession(session)
             stopTicker()
+            reload()
         } catch {
             message = error.localizedDescription
         }
@@ -229,7 +210,7 @@ struct FocusView: View {
         stopTicker()
         ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             guard let session = activeSession else { return }
-            elapsedSeconds = max(0, Int(Date().timeIntervalSince(session.startedAt)))
+            elapsedSeconds = max(session.elapsedSeconds, Int(Date().timeIntervalSince(session.startedAt)))
         }
     }
 

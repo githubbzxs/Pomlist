@@ -1,49 +1,36 @@
-import Foundation
+﻿import Foundation
 
-struct PLAnalyticsSnapshot {
-    let days: Int
-    let totalSessions: Int
-    let totalFocusSeconds: Int
-    let completedTodos: Int
-    let completedTaskRefs: Int
-    let averageFocusSeconds: Int
-    let categoryBreakdown: [PLCategoryMetric]
-    let hourlyDistribution: [PLHourlyMetric]
-    let dailyTrend: [PLDailyMetric]
+struct PLCategoryPoint: Identifiable {
+    let id: String
+    let category: String
+    let count: Int
 
-    static func empty(days: Int) -> PLAnalyticsSnapshot {
-        PLAnalyticsSnapshot(
-            days: days,
-            totalSessions: 0,
-            totalFocusSeconds: 0,
-            completedTodos: 0,
-            completedTaskRefs: 0,
-            averageFocusSeconds: 0,
-            categoryBreakdown: [],
-            hourlyDistribution: (0 ... 23).map { PLHourlyMetric(hour: $0, count: 0) },
-            dailyTrend: []
-        )
+    init(category: String, count: Int) {
+        self.id = category
+        self.category = category
+        self.count = count
     }
 }
 
-struct PLCategoryMetric: Identifiable {
-    let name: String
-    let count: Int
-
-    var id: String { name }
-}
-
-struct PLHourlyMetric: Identifiable {
+struct PLHourlyPoint: Identifiable {
+    let id: Int
     let hour: Int
     let count: Int
 
-    var id: Int { hour }
+    init(hour: Int, count: Int) {
+        self.id = hour
+        self.hour = hour
+        self.count = count
+    }
 }
 
-struct PLDailyMetric: Identifiable {
-    let dateKey: String
-    let label: String
-    let focusSeconds: Int
-
-    var id: String { dateKey }
+struct PLAnalyticsSnapshot {
+    let todaySessions: Int
+    let todayDurationSeconds: Int
+    let streakDays: Int
+    let sessionsLast7Days: Int
+    let sessionsLast30Days: Int
+    let avgCompletionRate: Double
+    let categoryDistribution: [PLCategoryPoint]
+    let hourlyDistribution: [PLHourlyPoint]
 }

@@ -1,122 +1,253 @@
-import CryptoKit
+﻿import CryptoKit
 import Foundation
 import SwiftData
 
 @MainActor
 final class PLMigrationService: MigrationImporting {
     private let context: ModelContext
+    private let decoder: JSONDecoder
 
     init(context: ModelContext) {
         self.context = context
+        self.decoder = JSONDecoder()
+        self.decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+
+            let fractionalFormatter = ISO8601DateFormatter()
+            fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = fractionalFormatter.date(from: value) {
+                return date
+            }
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: value) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Invalid ISO8601 date: \(value)")
+        }
     }
 
-    @discardableResult
-    func importLegacyDataIfNeeded(from fileURL: URL?) throws -> PLMigrationReport {
-        guard let fileURL else { return .empty }
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return .empty }
+    func importMigrationFile(from url: URL) throws -> PLMigrationReport {
+        let data = try Data(contentsOf: url)
+        let fingerprint = sha256(data)
 
-        let data = try Data(contentsOf: fileURL)
-        let payload = try JSONDecoder().decode(LegacyPayload.self, from: data)
+        guard let authConfig = try loadAuthConfig() else {
+            throw PLServiceError.invalidPasscode
+        }
+
+        if authConfig.lastMigrationFingerprint == fingerprint {
+            var report = PLMigrationReport.empty
+            report.skippedByFingerprint = true
+            return report
+        }
+
+        let payload = try decoder.decode(PomlistMigrationV1.self, from: data)
+        guard payload.schema == "PomlistMigrationV1" else {
+            throw PLServiceError.decodeFailed
+        }
+
         var report = PLMigrationReport.empty
 
-        if try context.fetchCount(FetchDescriptor<PLTodo>()) == 0 {
-            for todo in payload.todos {
-                let item = PLTodo(
+        for todo in payload.todos {
+            let descriptor = FetchDescriptor<PLTodo>(predicate: #Predicate { $0.id == todo.id })
+            if let existing = try context.fetch(descriptor).first {
+                if existing.updatedAt <= todo.updatedAt {
+                    apply(todo: todo, to: existing)
+                    report.updatedTodos += 1
+                }
+            } else {
+                let entity = PLTodo(
                     id: todo.id,
                     title: todo.title,
-                    detail: todo.detail ?? "",
-                    category: todo.category ?? "默认",
+                    notes: todo.notes ?? "",
+                    category: todo.category,
                     tags: todo.tags,
-                    isDone: todo.isDone,
+                    priority: todo.priority,
+                    status: todo.status,
+                    dueAt: todo.dueAt,
+                    completedAt: todo.completedAt,
                     createdAt: todo.createdAt,
                     updatedAt: todo.updatedAt
                 )
-                context.insert(item)
+                context.insert(entity)
+                report.importedTodos += 1
             }
-            report.importedTodos = payload.todos.count
         }
 
-        if try context.fetchCount(FetchDescriptor<PLFocusSession>()) == 0 {
-            for rawSession in payload.sessions {
-                let session = PLFocusSession(
-                    id: rawSession.id,
-                    startedAt: rawSession.startedAt,
-                    endedAt: rawSession.endedAt,
-                    plannedMinutes: rawSession.plannedMinutes,
-                    elapsedSeconds: rawSession.elapsedSeconds,
-                    isCancelled: rawSession.isCancelled,
-                    completedTaskCount: rawSession.taskRefs.filter { $0.wasDoneAtEnd }.count
-                )
-                context.insert(session)
+        for session in payload.sessions {
+            let sessionDescriptor = FetchDescriptor<PLFocusSession>(predicate: #Predicate { $0.id == session.id })
+            let sessionEntity: PLFocusSession
 
-                for rawRef in rawSession.taskRefs {
+            if let existing = try context.fetch(sessionDescriptor).first {
+                if existing.updatedAt <= session.updatedAt {
+                    apply(session: session, to: existing)
+                    report.updatedSessions += 1
+                }
+                sessionEntity = existing
+            } else {
+                let entity = PLFocusSession(
+                    id: session.id,
+                    state: session.state,
+                    startedAt: session.startedAt,
+                    endedAt: session.endedAt,
+                    elapsedSeconds: session.elapsedSeconds,
+                    totalTaskCount: session.totalTaskCount,
+                    completedTaskCount: session.completedTaskCount,
+                    completionRate: session.completionRate,
+                    createdAt: session.createdAt,
+                    updatedAt: session.updatedAt
+                )
+                context.insert(entity)
+                sessionEntity = entity
+                report.importedSessions += 1
+            }
+
+            for task in session.tasks {
+                let refDescriptor = FetchDescriptor<PLSessionTaskRef>(predicate: #Predicate { $0.id == task.id })
+                if let existingRef = try context.fetch(refDescriptor).first {
+                    if existingRef.updatedAt <= task.updatedAt {
+                        apply(task: task, to: existingRef)
+                        existingRef.session = sessionEntity
+                        report.updatedTaskRefs += 1
+                    }
+                } else {
                     let ref = PLSessionTaskRef(
-                        id: rawRef.id,
-                        todoID: rawRef.todoID,
-                        todoTitleSnapshot: rawRef.todoTitleSnapshot,
-                        categorySnapshot: rawRef.categorySnapshot,
-                        tagsSnapshot: rawRef.tagsSnapshot.joined(separator: ","),
-                        wasDoneAtEnd: rawRef.wasDoneAtEnd,
-                        createdAt: rawRef.createdAt
+                        id: task.id,
+                        todoId: task.todoId,
+                        titleSnapshot: task.titleSnapshot ?? task.todoTitle ?? "",
+                        orderIndex: task.orderIndex,
+                        isCompletedInSession: task.completed,
+                        completedAt: task.completedAt,
+                        createdAt: task.createdAt,
+                        updatedAt: task.updatedAt
                     )
-                    ref.session = session
+                    ref.session = sessionEntity
                     context.insert(ref)
+                    sessionEntity.taskRefs.append(ref)
+                    report.importedTaskRefs += 1
                 }
             }
-            report.importedSessions = payload.sessions.count
         }
 
-        if let passcode = payload.passcode, passcode.count == 4,
-           try context.fetchCount(FetchDescriptor<PLAuthConfig>()) == 0
-        {
-            let auth = PLAuthConfig(passcodeHash: hash(passcode))
-            context.insert(auth)
+        if let passcode = payload.user?.passcode, passcode.count == 4 {
+            authConfig.passcodeHash = hash(passcode)
+            authConfig.touch()
             report.importedAuthConfig = true
         }
 
-        try context.saveIfNeeded()
+        authConfig.lastMigrationFingerprint = fingerprint
+        authConfig.touch()
+
+        try context.saveIfChanged()
         return report
     }
 
-    private func hash(_ value: String) -> String {
-        let digest = SHA256.hash(data: Data(value.utf8))
+    private func loadAuthConfig() throws -> PLAuthConfig? {
+        var descriptor = FetchDescriptor<PLAuthConfig>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+
+    private func apply(todo: TodoDTO, to entity: PLTodo) {
+        entity.title = todo.title
+        entity.notes = todo.notes ?? ""
+        entity.category = todo.category
+        entity.tags = todo.tags
+        entity.priority = todo.priority
+        entity.status = todo.status
+        entity.dueAt = todo.dueAt
+        entity.completedAt = todo.completedAt
+        entity.createdAt = todo.createdAt
+        entity.updatedAt = todo.updatedAt
+    }
+
+    private func apply(session: SessionDTO, to entity: PLFocusSession) {
+        entity.state = session.state
+        entity.startedAt = session.startedAt
+        entity.endedAt = session.endedAt
+        entity.elapsedSeconds = session.elapsedSeconds
+        entity.totalTaskCount = session.totalTaskCount
+        entity.completedTaskCount = session.completedTaskCount
+        entity.completionRate = session.completionRate
+        entity.createdAt = session.createdAt
+        entity.updatedAt = session.updatedAt
+    }
+
+    private func apply(task: SessionTaskDTO, to entity: PLSessionTaskRef) {
+        entity.todoId = task.todoId
+        entity.titleSnapshot = task.titleSnapshot ?? task.todoTitle ?? ""
+        entity.orderIndex = task.orderIndex
+        entity.isCompletedInSession = task.completed
+        entity.completedAt = task.completedAt
+        entity.createdAt = task.createdAt
+        entity.updatedAt = task.updatedAt
+    }
+
+    private func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func hash(_ text: String) -> String {
+        let digest = SHA256.hash(data: Data(text.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
 
-private struct LegacyPayload: Decodable {
-    var todos: [LegacyTodo] = []
-    var sessions: [LegacySession] = []
-    var passcode: String?
+private struct PomlistMigrationV1: Decodable {
+    let schema: String
+    let exportedAt: Date
+    let user: UserDTO?
+    let todos: [TodoDTO]
+    let sessions: [SessionDTO]
 }
 
-private struct LegacyTodo: Decodable {
-    var id: UUID
-    var title: String
-    var detail: String?
-    var category: String?
-    var tags: [String]
-    var isDone: Bool
-    var createdAt: Date
-    var updatedAt: Date
+private struct UserDTO: Decodable {
+    let id: String?
+    let email: String?
+    let passcodeUpdatedAt: Date?
+    let passcode: String?
 }
 
-private struct LegacySession: Decodable {
-    var id: UUID
-    var startedAt: Date
-    var endedAt: Date?
-    var plannedMinutes: Int
-    var elapsedSeconds: Int
-    var isCancelled: Bool
-    var taskRefs: [LegacySessionTaskRef]
+private struct TodoDTO: Decodable {
+    let id: String
+    let title: String
+    let subject: String?
+    let notes: String?
+    let category: String
+    let tags: [String]
+    let priority: Int
+    let status: String
+    let dueAt: Date?
+    let completedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
 }
 
-private struct LegacySessionTaskRef: Decodable {
-    var id: UUID
-    var todoID: UUID
-    var todoTitleSnapshot: String
-    var categorySnapshot: String
-    var tagsSnapshot: [String]
-    var wasDoneAtEnd: Bool
-    var createdAt: Date
+private struct SessionDTO: Decodable {
+    let id: String
+    let state: String
+    let startedAt: Date
+    let endedAt: Date?
+    let elapsedSeconds: Int
+    let totalTaskCount: Int
+    let completedTaskCount: Int
+    let completionRate: Double
+    let createdAt: Date
+    let updatedAt: Date
+    let tasks: [SessionTaskDTO]
+}
+
+private struct SessionTaskDTO: Decodable {
+    let id: String
+    let todoId: String?
+    let todoTitle: String?
+    let titleSnapshot: String?
+    let orderIndex: Int
+    let completed: Bool
+    let completedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
 }

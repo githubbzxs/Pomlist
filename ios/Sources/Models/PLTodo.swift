@@ -1,50 +1,63 @@
-import Foundation
+﻿import Foundation
 import SwiftData
 
 @Model
 final class PLTodo {
-    @Attribute(.unique) var id: UUID
+    @Attribute(.unique) var id: String
     var title: String
-    var detail: String
+    var notes: String
     var category: String
-    var tagsRaw: String
-    var isDone: Bool
+    var tagsCSV: String
+    var priority: Int
+    var status: String
+    var dueAt: Date?
+    var completedAt: Date?
     var createdAt: Date
     var updatedAt: Date
 
     init(
-        id: UUID = UUID(),
+        id: String,
         title: String,
-        detail: String = "",
-        category: String = "默认",
-        tags: [String] = [],
-        isDone: Bool = false,
-        createdAt: Date = .now,
-        updatedAt: Date = .now
+        notes: String,
+        category: String,
+        tags: [String],
+        priority: Int,
+        status: String,
+        dueAt: Date?,
+        completedAt: Date?,
+        createdAt: Date,
+        updatedAt: Date
     ) {
         self.id = id
         self.title = title
-        self.detail = detail
+        self.notes = notes
         self.category = category
-        self.tagsRaw = tags.joined(separator: ",")
-        self.isDone = isDone
+        self.tagsCSV = tags.joined(separator: ",")
+        self.priority = max(1, min(3, priority))
+        self.status = status
+        self.dueAt = dueAt
+        self.completedAt = completedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
 
     var tags: [String] {
         get {
-            tagsRaw
+            tagsCSV
                 .split(separator: ",")
                 .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
         }
         set {
-            tagsRaw = newValue
+            tagsCSV = newValue
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .joined(separator: ",")
         }
+    }
+
+    var isCompleted: Bool {
+        status == "completed"
     }
 
     func touch() {

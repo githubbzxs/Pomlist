@@ -1,28 +1,21 @@
-import SwiftUI
+﻿import SwiftUI
 
 struct PLPanelCard<Content: View>: View {
-    private let title: String?
-    private let content: Content
+    let title: String
+    @ViewBuilder let content: Content
 
-    init(title: String? = nil, @ViewBuilder content: () -> Content) {
+    init(title: String, @ViewBuilder content: () -> Content) {
         self.title = title
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let title {
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
+            Text(title)
+                .font(.headline)
             content
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground))
-        )
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

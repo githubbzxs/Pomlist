@@ -1,39 +1,36 @@
-import Foundation
+﻿import Foundation
 import SwiftData
 
 @Model
 final class PLSessionTaskRef {
-    @Attribute(.unique) var id: UUID
-    var todoID: UUID
-    var todoTitleSnapshot: String
-    var categorySnapshot: String
-    var tagsSnapshot: String
-    var wasDoneAtEnd: Bool
+    @Attribute(.unique) var id: String
+    var todoId: String?
+    var titleSnapshot: String
+    var orderIndex: Int
+    var isCompletedInSession: Bool
+    var completedAt: Date?
     var createdAt: Date
+    var updatedAt: Date
+
     var session: PLFocusSession?
 
     init(
-        id: UUID = UUID(),
-        todoID: UUID,
-        todoTitleSnapshot: String,
-        categorySnapshot: String,
-        tagsSnapshot: String,
-        wasDoneAtEnd: Bool,
-        createdAt: Date = .now
+        id: String,
+        todoId: String?,
+        titleSnapshot: String,
+        orderIndex: Int,
+        isCompletedInSession: Bool,
+        completedAt: Date?,
+        createdAt: Date,
+        updatedAt: Date
     ) {
         self.id = id
-        self.todoID = todoID
-        self.todoTitleSnapshot = todoTitleSnapshot
-        self.categorySnapshot = categorySnapshot
-        self.tagsSnapshot = tagsSnapshot
-        self.wasDoneAtEnd = wasDoneAtEnd
+        self.todoId = todoId
+        self.titleSnapshot = titleSnapshot
+        self.orderIndex = max(0, orderIndex)
+        self.isCompletedInSession = isCompletedInSession
+        self.completedAt = completedAt
         self.createdAt = createdAt
-    }
-
-    var tags: [String] {
-        tagsSnapshot
-            .split(separator: ",")
-            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        self.updatedAt = updatedAt
     }
 }

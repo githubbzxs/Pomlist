@@ -1,4 +1,4 @@
-import SwiftData
+﻿import SwiftData
 import SwiftUI
 
 struct PomlistRootView: View {
@@ -8,18 +8,27 @@ struct PomlistRootView: View {
     var body: some View {
         Group {
             if !serviceHub.isReady {
-                ProgressView("正在初始化数据")
+                ProgressView("正在初始化")
                     .task {
                         serviceHub.configure(with: modelContext)
+                        await serviceHub.attemptBiometricUnlockIfEnabled()
                     }
             } else if !serviceHub.isUnlocked {
-                UnlockView(errorMessage: serviceHub.unlockError) { passcode in
-                    serviceHub.unlock(passcode: passcode)
-                }
+                UnlockView(
+                    errorMessage: serviceHub.unlockError,
+                    biometricEnabled: serviceHub.isBiometricAvailable,
+                    onUnlock: { passcode in
+                        serviceHub.unlock(passcode: passcode)
+                    },
+                    onBiometricUnlock: {
+                        _ = try? await serviceHub.attemptBiometricUnlock()
+                    }
+                )
             } else {
                 MainTabView(serviceHub: serviceHub)
             }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.88), value: serviceHub.isUnlocked)
     }
 }
 

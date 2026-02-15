@@ -1,7 +1,7 @@
-import SwiftData
+﻿import SwiftData
 
 extension ModelContext {
-    func saveIfNeeded() throws {
+    func saveIfChanged() throws {
         if hasChanges {
             try save()
         }

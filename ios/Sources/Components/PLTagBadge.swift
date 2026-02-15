@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 struct PLTagBadge: View {
     let text: String
@@ -9,7 +9,7 @@ struct PLTagBadge: View {
             .font(.caption)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(tint.opacity(0.16), in: Capsule())
+            .background(tint.opacity(0.14), in: Capsule())
             .foregroundStyle(tint)
     }
 }
