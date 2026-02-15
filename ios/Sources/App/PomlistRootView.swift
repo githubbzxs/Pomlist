@@ -25,7 +25,7 @@ struct PomlistRootView: View {
                     }
                 )
             } else {
-                MainTabView(serviceHub: serviceHub)
+                TodayCanvasView(serviceHub: serviceHub)
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.88), value: serviceHub.isUnlocked)
