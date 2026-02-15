@@ -345,16 +345,16 @@ struct TodayCanvasView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 8) {
-                        ForEach(viewModel.centerTasks) { task in
+                        ForEach(viewModel.centerTasks, id: \.id) { task in
                             Button {
                                 viewModel.toggleCenterTask(taskID: task.id, completed: !task.completed)
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: task.completed ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(task.completed ? .green : .secondary)
+                                        .foregroundStyle(task.completed ? Color.green : Color.secondary)
                                     Text(task.title)
                                         .font(.subheadline)
-                                        .foregroundStyle(task.completed ? .secondary : .white)
+                                        .foregroundStyle(task.completed ? Color.secondary : Color.white)
                                         .strikethrough(task.completed, color: .secondary)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
@@ -447,7 +447,7 @@ struct TodayCanvasView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(todo.title)
                         .font(.subheadline)
-                        .foregroundStyle(todo.status == "completed" ? .secondary : .white)
+                        .foregroundStyle(todo.status == "completed" ? Color.secondary : Color.white)
                         .strikethrough(todo.status == "completed", color: .secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
