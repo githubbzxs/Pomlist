@@ -601,3 +601,30 @@
 
 - **[2026-02-15] 当前状态**：非 iOS 授权路径内的四项任务已完成（迁移脚本、IPA workflow、文档、记忆增补）。
 - **[2026-02-15] 下一步**：在 GitHub 上手动触发一次 `iOS Unsigned IPA`，确认目标 Scheme 的 artifact 产出与命名符合预期。
+
+## Decisions（增量）
+
+- **[2026-02-15] 主线重构为 iOS 原生**：仓库主线从 Next.js Web 切换为 SwiftUI + SwiftData（iOS 17+）。
+  - Why：按最新需求彻底转为 iOS App，并保留单人本地数据与原生交互体验。
+  - Impact：删除 Web 运行时代码与 Web CI，保留 `ios/`、`tools/migration/`、`docs/`。
+  - Verify：仓库根目录不再包含 Web 业务代码，`ios/project.yml` 可用于 XcodeGen 生成工程。
+
+- **[2026-02-15] 迁移协议定版**：新增 `PomlistMigrationV1` 导出/导入链路。
+  - Why：确保旧 `pomlist-db.json` 可全量迁移到 iOS 本地模型。
+  - Impact：`tools/migration/export-pomlist-migration-v1.mjs` 与 `ios/Sources/Services/PLMigrationService.swift`。
+  - Verify：`node tools/migration/export-pomlist-migration-v1.mjs --input data/pomlist-db.json --output tools/migration/output/PomlistMigrationV1-test.json` 成功。
+
+- **[2026-02-15] IPA 产物策略确认**：GitHub Actions 仅构建未签名 IPA。
+  - Why：当前流程由用户本地完成安装链路，不在 CI 内处理签名。
+  - Impact：`.github/workflows/ios-unsigned-ipa.yml` 使用 `CODE_SIGNING_ALLOWED=NO` 打包并上传 artifact。
+  - Verify：workflow 产物名为 `pomlist-ios-unsigned-ipa`，文件为 `Pomlist-unsigned.ipa`。
+
+## Commands（增量）
+
+- **[2026-02-15] 迁移导出（CLI）**：`node tools/migration/export-pomlist-migration-v1.mjs --input <db_json> --output <migration_json>`
+- **[2026-02-15] 本地生成 iOS 工程**：`cd ios && xcodegen generate`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：Web -> iOS 代码切换、迁移工具、未签名 IPA 工作流与文档已完成。
+- **[2026-02-15] 下一步**：在 macOS 环境执行 `xcodegen + xcodebuild` 实机验证，并按你的本地安装链路完成未签名 IPA 安装验收。
