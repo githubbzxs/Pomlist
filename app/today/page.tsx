@@ -27,7 +27,6 @@ import type {
   DashboardMetrics,
   DistributionBucket,
   EfficiencyMetrics,
-  HourlyStatsItem,
   PeriodMetrics,
   TodoItem,
   TrendPoint,
@@ -1227,7 +1226,6 @@ export default function TodayPage() {
   );
 
   const maxCategorySeconds = Math.max(1, ...categoryStats.map((item) => item.totalDurationSeconds));
-  const maxHourlySeconds = Math.max(1, ...hourlyDistribution.map((item) => item.totalDurationSeconds));
 
   const downPanel = (
     <div className="canvas-panel-content panel-glass-analytics">
@@ -1322,31 +1320,6 @@ export default function TodayPage() {
                     <div
                       className="h-full rounded-full bg-[var(--accent)]"
                       style={{ width: `${Math.max(6, width)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <section className="mobile-card glass-card-panel">
-        <h3 className="page-title text-lg font-bold text-main">时段分布（UTC）</h3>
-        {hourlyDistribution.length === 0 ? null : (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {hourlyDistribution.map((item: HourlyStatsItem) => {
-              const width = (item.totalDurationSeconds / maxHourlySeconds) * 100;
-              return (
-                <div key={item.hour} className="panel-solid p-2">
-                  <div className="flex items-center justify-between text-[11px] text-subtle">
-                    <span>{String(item.hour).padStart(2, "0")}:00</span>
-                    <span>{item.sessionCount} 次</span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-[rgba(148,163,184,0.2)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)]"
-                      style={{ width: `${Math.max(4, width)}%` }}
                     />
                   </div>
                 </div>
