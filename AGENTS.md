@@ -463,3 +463,22 @@
 
 - **[2026-02-15] 当前状态**：主页文案精简 + 上滑历史记录页已上线大陆测试机并回源正常。
 - **[2026-02-15] 下一步**：如需，我可以继续按你的参考图微调历史记录页卡片样式（密度、时间格式、字段顺序）。
+
+## Decisions（增量）
+
+- **[2026-02-15] 面板结构修正**：`today` 改为四向结构（上历史 / 中主页 / 右任务 / 下统计），恢复下滑统计页。
+  - Why：纠正“把下页替换为历史”的误解，按新确认实现“上方扩展页=历史、下方继续统计”。
+  - Impact：`components/mobile/app-canvas.tsx`、`app/today/page.tsx`、`app/globals.css`。
+  - Verify：中心页可上滑/下滑分别进入历史与统计，侧滑任务页不受影响。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：修正版本已推送并在大陆 VPS 部署完成。
+- **[2026-02-15] 下一步**：按参考图继续微调历史扩展页视觉细节（你确认后我再改）。
+
+## Decisions（增量）
+
+- **[2026-02-15] 大陆机重部署完成（四向面板修正）**：按 `pm2 delete -> rmdir node_modules/.next -> npm ci -> npm run build -> pm2 start` 完成发布。
+  - Why：本轮变更涉及主导航手势与统计页恢复，需在线验证。
+  - Impact：大陆机 `C:\www\pomlist`，进程 `pomlist`（PM2 id 11）。
+  - Verify：`git rev-parse --short HEAD` 为 `352381b`；`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
