@@ -573,3 +573,31 @@
 
 - **[2026-02-15] 当前状态**：前后面板颜色统一已上线大陆测试机并回源正常。
 - **[2026-02-15] 下一步**：如需，我可以继续把 `auth/focus/todo` 页的层级色也对齐到同一组面板色值。
+
+## Decisions（增量）
+
+- **[2026-02-15] 迁移导出标准化**：新增 `PomlistMigrationV1` 导出脚本，将旧 `pomlist-db.json` 转换为结构化迁移文件。
+  - Why：为 iOS 迁移导入提供稳定中间格式，并保留告警与数据摘要用于核对。
+  - Impact：`tools/migration/export-pomlist-migration-v1.mjs`。
+  - Verify：执行 `node tools/migration/export-pomlist-migration-v1.mjs --help` 与实际导出命令，输出文件包含 `schema=PomlistMigrationV1`。
+
+- **[2026-02-15] iOS 未签名 IPA CI 落地**：新增 macOS GitHub Actions 工作流，自动探测工程并构建未签名 IPA artifact。
+  - Why：提供无需本地 Xcode 手工打包的统一产物链路，便于迁移验证与联调。
+  - Impact：`.github/workflows/ios-unsigned-ipa.yml`。
+  - Verify：触发 `iOS Unsigned IPA` 后可在 Artifacts 下载 `unsigned-ipa-<scheme>`。
+
+- **[2026-02-15] 迁移与构建文档补齐**：新增迁移导出与 IPA 工作流文档，并在 README 增加入口与执行命令。
+  - Why：降低新成员与多代理协作时的信息缺口，减少重复沟通成本。
+  - Impact：`docs/migration-export.md`、`docs/ios-unsigned-ipa.md`、`README.md`。
+  - Verify：按文档命令可完成迁移导出，并能定位到 workflow 使用说明。
+
+## Commands（增量）
+
+- **[2026-02-15] 迁移导出**：`node tools/migration/export-pomlist-migration-v1.mjs`
+- **[2026-02-15] 指定输入输出导出**：`node tools/migration/export-pomlist-migration-v1.mjs --input data/pomlist-db.json --output tools/migration/output/PomlistMigrationV1.custom.json`
+- **[2026-02-15] 查看导出脚本帮助**：`node tools/migration/export-pomlist-migration-v1.mjs --help`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：非 iOS 授权路径内的四项任务已完成（迁移脚本、IPA workflow、文档、记忆增补）。
+- **[2026-02-15] 下一步**：在 GitHub 上手动触发一次 `iOS Unsigned IPA`，确认目标 Scheme 的 artifact 产出与命名符合预期。
