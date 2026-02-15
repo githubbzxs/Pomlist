@@ -145,9 +145,15 @@ export function TaskPickerDrawer({
 
   return (
     <div className={`task-picker-backdrop ${open ? "is-open" : ""}`} onClick={onClose} aria-hidden={!open}>
-      <aside className={`task-picker-drawer ${open ? "is-open" : ""}`} onClick={(event) => event.stopPropagation()}>
+      <aside
+        className={`task-picker-drawer panel-glass-task ${open ? "is-open" : ""}`}
+        onClick={(event) => event.stopPropagation()}
+      >
         <header className="task-picker-header">
-          <h3 className="page-title text-xl font-bold text-main">添加任务</h3>
+          <div>
+            <h3 className="page-title text-xl font-bold text-main">添加任务</h3>
+            <p className="subtle-kicker">快速创建并加入计划</p>
+          </div>
           <button type="button" className="btn-muted h-9 px-3 text-xs" onClick={onClose}>
             关闭
           </button>
@@ -240,7 +246,7 @@ export function TaskPickerDrawer({
                   <button
                     key={todo.id}
                     type="button"
-                    className={`md-task-item ${selected ? "is-selected" : ""}`}
+                    className={`md-task-item glass-item ${selected ? "is-selected" : ""}`}
                     onClick={() => void onToggleTodo(todo.id)}
                     disabled={sessionActive && selected}
                   >

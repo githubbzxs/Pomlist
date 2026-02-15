@@ -816,7 +816,7 @@ export default function TodayPage() {
         <h1 className="page-title text-2xl font-bold text-main">Pomlist</h1>
       </header>
 
-      <section className="mobile-main-panel mobile-main-panel--frameless grow">
+      <section className="mobile-main-panel mobile-main-panel--frameless panel-glass-home panel-glass-stack grow">
         <div className="mobile-main-timer">
           <p className="timer-display page-title">{formatClock(displaySeconds)}</p>
           <div className="progress-track mt-2">
@@ -827,7 +827,7 @@ export default function TodayPage() {
           </p>
         </div>
 
-        <div className="mobile-main-divider" />
+        <div className="mobile-main-divider panel-glass-divider" />
 
         <div className="mobile-main-task-area">
           <div className="mb-3 flex items-center justify-between">
@@ -840,7 +840,7 @@ export default function TodayPage() {
           {centerTasks.length === 0 ? (
             <p className="task-empty">当前没有任务，先添加再开始。</p>
           ) : (
-            <div className="md-task-list home-task-list">
+            <div className="md-task-list home-task-list panel-glass-list">
               {centerTasks.map((task) => (
                 <button
                   key={task.id}
@@ -859,7 +859,7 @@ export default function TodayPage() {
           )}
         </div>
 
-        <div className="mobile-main-actions mobile-main-actions--floating">
+        <div className="mobile-main-actions mobile-main-actions--floating panel-glass-footer">
           <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
             添加任务
           </button>
@@ -890,9 +890,12 @@ export default function TodayPage() {
   );
 
   const rightPanel = (
-    <div className="canvas-panel-content">
+    <div className="canvas-panel-content panel-glass-task">
       <header className="canvas-panel-header">
-        <h2 className="page-title text-2xl font-bold text-main">Task</h2>
+        <div>
+          <h2 className="page-title text-2xl font-bold text-main">Task</h2>
+          <p className="subtle-kicker">任务库与标签管理</p>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -910,7 +913,7 @@ export default function TodayPage() {
         </div>
       </header>
 
-      <section className="mobile-card grow">
+      <section className="mobile-card glass-card-panel grow">
         <div className="mb-2 flex items-center justify-between text-xs text-subtle">
           <span>可见任务 {libraryTodos.length}</span>
           <span>
@@ -929,7 +932,7 @@ export default function TodayPage() {
               const content = readContent(todo);
 
               return (
-                <li key={todo.id} className="library-item">
+                <li key={todo.id} className="library-item glass-item">
                   <button type="button" className="library-item-main" onClick={() => openTaskEditor(todo)}>
                     <p
                       className={`break-words text-sm ${
@@ -1216,34 +1219,38 @@ export default function TodayPage() {
   const maxHourlySeconds = Math.max(1, ...hourlyDistribution.map((item) => item.totalDurationSeconds));
 
   const downPanel = (
-    <div className="canvas-panel-content">
+    <div className="canvas-panel-content panel-glass-analytics">
       <header className="canvas-panel-header">
-        <h2 className="page-title text-2xl font-bold text-main">Statistic</h2>
+        <div>
+          <h2 className="page-title text-2xl font-bold text-main">Statistic</h2>
+          <p className="subtle-kicker">趋势、效率与分布</p>
+        </div>
       </header>
 
-      <section className="analytics-grid">
-        <article className="mobile-card p-4">
-          <p className="text-xs text-subtle">今日任务钟</p>
-          <p className="page-title mt-2 text-2xl font-bold text-main">{period.today.sessionCount}</p>
+      <section className="analytics-grid stats-overview-grid">
+        <article className="glass-metric p-4">
+          <p className="metric-label">今日任务钟</p>
+          <p className="metric-value page-title mt-2">{period.today.sessionCount}</p>
         </article>
-        <article className="mobile-card p-4">
-          <p className="text-xs text-subtle">今日完成任务</p>
-          <p className="page-title mt-2 text-2xl font-bold text-main">{period.today.completedTaskCount}</p>
+        <article className="glass-metric p-4">
+          <p className="metric-label">今日完成任务</p>
+          <p className="metric-value page-title mt-2">{period.today.completedTaskCount}</p>
         </article>
-        <article className="mobile-card p-4">
-          <p className="text-xs text-subtle">今日时长</p>
-          <p className="page-title mt-2 text-lg font-bold text-main">{formatDuration(period.today.totalDurationSeconds)}</p>
+        <article className="glass-metric p-4">
+          <p className="metric-label">今日时长</p>
+          <p className="metric-value page-title mt-2 text-lg">{formatDuration(period.today.totalDurationSeconds)}</p>
         </article>
-        <article className="mobile-card p-4">
-          <p className="text-xs text-subtle">今日完成率 / 连续天数</p>
-          <p className="page-title mt-2 text-lg font-bold text-main">
+        <article className="glass-metric p-4">
+          <p className="metric-label">今日完成率 / 连续天数</p>
+          <p className="metric-value page-title mt-2 text-lg">
             {Math.round(period.today.completionRate)}% · {dashboard.streakDays} 天
           </p>
         </article>
       </section>
 
-      <section className="mobile-card">
+      <section className="mobile-card glass-card-panel">
         <h3 className="page-title text-lg font-bold text-main">周期视角</h3>
+        <p className="stats-section-subtitle">近 7 天与 30 天数据对照</p>
         <div className="period-grid mt-3">
           <article className="panel-solid p-3">
             <p className="text-xs text-subtle">近 7 天</p>
@@ -1260,8 +1267,9 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <section className="mobile-card">
+      <section className="mobile-card glass-card-panel">
         <h3 className="page-title text-lg font-bold text-main">效率视角</h3>
+        <p className="stats-section-subtitle">单钟效率与周期变化</p>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           <div className="panel-solid p-3">
             <p className="text-[11px] text-subtle">每小时完成</p>
@@ -1285,7 +1293,7 @@ export default function TodayPage() {
         </p>
       </section>
 
-      <section className="mobile-card">
+      <section className="mobile-card glass-card-panel">
         <h3 className="page-title text-lg font-bold text-main">标签贡献（一级）</h3>
         {categoryStats.length === 0 ? null : (
           <div className="mt-3 space-y-3">
@@ -1312,7 +1320,7 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mobile-card">
+      <section className="mobile-card glass-card-panel">
         <h3 className="page-title text-lg font-bold text-main">时段分布（UTC）</h3>
         {hourlyDistribution.length === 0 ? null : (
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -1337,14 +1345,14 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mobile-card">
+      <section className="mobile-card glass-card-panel glass-chart">
         <h3 className="page-title text-lg font-bold text-main">7 天趋势</h3>
         <div className="mt-3">
           <TrendChart points={trend} />
         </div>
       </section>
 
-      <section className="mobile-card">
+      <section className="mobile-card glass-card-panel glass-chart">
         <h3 className="page-title text-lg font-bold text-main">30 天分布</h3>
         <div className="mt-3">
           <DistributionChart buckets={distribution} />
