@@ -378,3 +378,15 @@
 
 - **[2026-02-15] 当前状态**：深黑主题与“结束后显示用时”已完成，并通过本地 `lint/typecheck/build`。
 - **[2026-02-15] 下一步**：在大陆 VPS 验收线上交互是否与本地一致（进行中隐藏、结束后立即显示）。
+
+## Decisions（增量）
+
+- **[2026-02-15] 大陆机部署恢复流程固化**：当 Windows 上 `npm ci` 触发 `EPERM unlink next-swc` 时，先移除 PM2 进程再重装依赖与重建。
+  - Why：`next-swc.win32-x64-msvc.node` 被占用会导致依赖安装失败，进而使 `pomlist` 无法启动。
+  - Impact：大陆机 `C:\www\pomlist` 的运维流程改为 `pm2 delete pomlist -> rmdir node_modules/.next -> npm ci -> npm run build -> pm2 start`。
+  - Verify：`pm2 ls` 显示 `pomlist` online，`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：大陆 VPS 已更新到 `3f19d70`，深黑主题与“进行中隐藏时间、结束后显示用时”已在线生效。
+- **[2026-02-15] 下一步**：如需，我可以补做一次公网域名 `pomlist.0xpsyche.me` 的 HTTPS 回源验收。
