@@ -937,7 +937,7 @@ export default function TodayPage() {
           ) : (
             <button
               type="button"
-              className="btn-primary h-11 grow text-sm"
+              className="btn-primary home-start-btn h-11 grow text-sm"
               onClick={() => void handleStartSession()}
               disabled={plannedTodos.length === 0 || starting}
             >
