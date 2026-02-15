@@ -16,6 +16,6 @@ struct PLMetricCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .plLiquidGlassCard(cornerRadius: 12, borderOpacity: 0.2, highlightOpacity: 0.1, shadowOpacity: 0.12)
     }
 }

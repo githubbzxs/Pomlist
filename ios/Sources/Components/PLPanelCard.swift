@@ -16,6 +16,6 @@ struct PLPanelCard<Content: View>: View {
             content
         }
         .padding(14)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .plLiquidGlassCard(cornerRadius: 16, borderOpacity: 0.22, highlightOpacity: 0.14, shadowOpacity: 0.16)
     }
 }
