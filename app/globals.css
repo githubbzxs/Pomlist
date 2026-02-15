@@ -622,7 +622,10 @@ button {
 
 .home-progress-summary {
   margin: 0.72rem 0 1.02rem;
-  font-size: 0.82rem;
+  font-size: clamp(1.22rem, 4.6vw, 1.72rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
 }
 
 .home-task-list {

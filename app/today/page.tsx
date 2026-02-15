@@ -891,7 +891,7 @@ export default function TodayPage() {
           <div className="progress-track mt-2">
             <div className="progress-fill" style={{ width: `${progressPercent(completedCount, totalCount)}%` }} />
           </div>
-          <p className="home-progress-summary text-subtle">{completedCount}/{totalCount}</p>
+          <p className="home-progress-summary page-title">{completedCount}/{totalCount}</p>
         </div>
 
         <div className="mobile-main-divider panel-glass-divider" />
@@ -899,9 +899,6 @@ export default function TodayPage() {
         <div className="mobile-main-task-area">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="page-title text-lg font-bold text-main">任务</h2>
-            <span className="home-progress-text">
-              {completedCount}/{totalCount}
-            </span>
           </div>
 
           {centerTasks.length === 0 ? null : (
