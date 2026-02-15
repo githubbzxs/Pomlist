@@ -435,7 +435,7 @@ export default function TodayPage() {
   };
 
   const categoryStats = dashboard.categoryStats ?? [];
-  const hourlyDistribution = dashboard.hourlyDistribution ?? [];
+  const hourlyDistribution = useMemo(() => dashboard.hourlyDistribution ?? [], [dashboard.hourlyDistribution]);
   const efficiency = dashboard.efficiency ?? EMPTY_EFFICIENCY;
   const timeDistribution = useMemo<DistributionBucket[]>(
     () =>
