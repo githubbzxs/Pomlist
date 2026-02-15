@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -191,10 +191,13 @@ export default function TodoPage() {
   }
 
   return (
-    <div className="staggered-reveal space-y-4 pb-20">
+    <div className="todo-layout staggered-reveal">
       <section className="panel p-4">
-        <h2 className="page-title text-xl font-bold text-main">新建任务</h2>
-        <form onSubmit={handleCreate} className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="todo-section-title">
+          <h2 className="page-title text-xl font-bold text-main">新建任务</h2>
+          <span className="metric-badge">快速录入</span>
+        </div>
+        <form onSubmit={handleCreate} className="todo-create-grid mt-3 md:grid md:grid-cols-2">
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
@@ -237,27 +240,23 @@ export default function TodoPage() {
         </form>
       </section>
 
-      {error ? (
-        <p className="rounded-xl border border-[rgba(248,113,113,0.36)] bg-[rgba(127,29,29,0.32)] px-3 py-2 text-sm text-red-200">{error}</p>
-      ) : null}
+      {error ? <p className="app-inline-error">{error}</p> : null}
 
       <section className="panel p-4">
-        <div className="flex items-center justify-between">
+        <div className="todo-section-title">
           <h2 className="page-title text-xl font-bold text-main">待办任务</h2>
-          <span className="rounded-full bg-[rgba(148,163,184,0.14)] px-3 py-1 text-xs font-semibold text-subtle">
-            {pendingTodos.length} 项
-          </span>
+          <span className="metric-badge">{pendingTodos.length} 项</span>
         </div>
 
         {pendingTodos.length === 0 ? (
           <FeedbackState variant="empty" title="暂无待办任务" description="先创建任务，或从已完成中恢复。" />
         ) : (
-          <ul className="mt-3 space-y-2">
+          <ul className="todo-pending-list mt-3">
             {pendingTodos.map((todo) => {
               const isSelected = selectedIds.includes(todo.id);
               const isEditing = editingId === todo.id;
               return (
-                <li key={todo.id} className="panel-solid p-3">
+                <li key={todo.id} className="todo-item">
                   <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
@@ -312,7 +311,7 @@ export default function TodoPage() {
       </section>
 
       <section className="panel p-4">
-        <div className="flex items-center justify-between">
+        <div className="todo-section-title">
           <h2 className="page-title text-xl font-bold text-main">已完成</h2>
           <span className="rounded-full border border-[rgba(74,222,128,0.35)] bg-[rgba(34,197,94,0.2)] px-3 py-1 text-xs font-semibold text-emerald-200">
             {completedTodos.length} 项
@@ -321,9 +320,9 @@ export default function TodoPage() {
         {completedTodos.length === 0 ? (
           <p className="mt-3 text-sm text-subtle">还没有已完成任务。</p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <ul className="todo-completed-list mt-3">
             {completedTodos.map((todo) => (
-              <li key={todo.id} className="panel-solid flex items-center justify-between gap-3 p-3">
+              <li key={todo.id} className="todo-item flex items-center justify-between gap-3">
                 <p className="line-clamp-1 text-sm text-subtle line-through">{todo.title}</p>
                 <div className="flex gap-2">
                   <button type="button" className="btn-muted h-9 px-3 text-xs" onClick={() => void handleToggleStatus(todo)}>
@@ -339,12 +338,12 @@ export default function TodoPage() {
         )}
       </section>
 
-      <div className="fixed inset-x-0 bottom-16 z-30 px-4 md:bottom-6 md:left-auto md:right-8 md:inset-x-auto md:w-80">
+      <div className="todo-bottom-action">
         <button
           type="button"
           onClick={handleStartSession}
           disabled={selectedIds.length === 0 || starting}
-          className="btn-primary h-12 w-full text-sm shadow-lg"
+          className="btn-primary text-sm shadow-lg"
         >
           {starting ? "正在开始..." : `开始任务钟（${selectedIds.length}项）`}
         </button>
@@ -352,4 +351,3 @@ export default function TodoPage() {
     </div>
   );
 }
-

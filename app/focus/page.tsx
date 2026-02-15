@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,13 @@ function errorToText(error: unknown): string {
     return error.message;
   }
   return "操作失败，请稍后重试。";
+}
+
+function progressPercent(completed: number, total: number): number {
+  if (total <= 0) {
+    return 0;
+  }
+  return Math.round((completed / total) * 100);
 }
 
 export default function FocusPage() {
@@ -108,25 +115,33 @@ export default function FocusPage() {
   }
 
   return (
-    <div className="staggered-reveal space-y-4 pb-20">
-      <section className="panel p-6 text-center">
-        <p className="text-sm text-subtle">当前完成进度</p>
-        <p className="page-title mt-2 text-5xl font-bold text-main">
-          {session.completedTaskCount}/{session.totalTaskCount}
-        </p>
-        <p className="mt-2 text-sm text-subtle">已用时 {formatMmSs(displaySeconds)}</p>
+    <div className="focus-layout staggered-reveal">
+      <section className="panel focus-hero">
+        <p className="subtle-kicker">FOCUS SESSION</p>
+        <p className="focus-hero-clock page-title">{formatMmSs(displaySeconds)}</p>
+        <div className="progress-track mt-3">
+          <div
+            className="progress-fill"
+            style={{ width: `${progressPercent(session.completedTaskCount, session.totalTaskCount)}%` }}
+          />
+        </div>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <span className="metric-badge">
+            {session.completedTaskCount}/{session.totalTaskCount}
+          </span>
+          <span className="text-xs text-subtle">完成率 {Math.round(session.completionRate)}%</span>
+        </div>
       </section>
 
       <section className="panel p-4">
-        <div className="flex items-center justify-between">
+        <div className="todo-section-title">
           <h2 className="page-title text-xl font-bold text-main">本钟任务</h2>
-          <span className="rounded-full bg-[rgba(148,163,184,0.14)] px-3 py-1 text-xs font-semibold text-subtle">
-            完成率 {Math.round(session.completionRate)}%
-          </span>
+          <span className="metric-badge">进行中</span>
         </div>
-        <ul className="mt-3 space-y-2">
+
+        <ul className="mt-3 focus-task-list">
           {session.tasks.map((task) => (
-            <li key={task.todoId} className="panel-solid flex items-center justify-between gap-3 px-3 py-2">
+            <li key={task.todoId} className="focus-task-item">
               <label className="flex min-w-0 flex-1 items-center gap-3">
                 <input
                   type="checkbox"
@@ -152,14 +167,10 @@ export default function FocusPage() {
         </ul>
       </section>
 
-      {error ? (
-        <p className="rounded-xl border border-[rgba(248,113,113,0.36)] bg-[rgba(127,29,29,0.32)] px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      ) : null}
+      {error ? <p className="app-inline-error">{error}</p> : null}
 
-      <div className="fixed inset-x-0 bottom-16 z-30 px-4 md:bottom-6 md:left-auto md:right-8 md:inset-x-auto md:w-80">
-        <button type="button" onClick={() => setDialogOpen(true)} className="btn-primary h-12 w-full text-sm shadow-lg">
+      <div className="focus-bottom-action">
+        <button type="button" onClick={() => setDialogOpen(true)} className="btn-primary text-sm shadow-lg">
           结束并记录
         </button>
       </div>
@@ -175,4 +186,3 @@ export default function FocusPage() {
     </div>
   );
 }
-

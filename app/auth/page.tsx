@@ -57,37 +57,44 @@ export default function AuthPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (passcode.length === PASSCODE_LENGTH) {
-            void submitPasscode(passcode);
-          }
-        }}
-      >
-        <input
-          ref={inputRef}
-          type="password"
-          autoComplete="off"
-          value={passcode}
-          disabled={isSubmitting}
-          maxLength={PASSCODE_LENGTH}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onChange={(event) => {
-            const nextValue = event.target.value.slice(0, PASSCODE_LENGTH);
-            setPasscode(nextValue);
+      <section className="auth-shell">
+        <p className="subtle-kicker">POMLIST</p>
+        <h1 className="page-title mt-2 text-3xl font-bold text-main">输入口令</h1>
+        <p className="mt-2 text-sm text-subtle">4 位口令自动提交，进入你的专注画布。</p>
+
+        <form
+          className="mt-8"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (passcode.length === PASSCODE_LENGTH) {
+              void submitPasscode(passcode);
+            }
           }}
-          aria-label="登录口令"
-          className={[
-            "auth-passcode-input",
-            isExpanded ? "auth-passcode-input-expanded" : "",
-            isError ? "auth-passcode-input-error" : "",
-          ]
-            .filter((className) => className.length > 0)
-            .join(" ")}
-        />
-      </form>
+        >
+          <input
+            ref={inputRef}
+            type="password"
+            autoComplete="off"
+            value={passcode}
+            disabled={isSubmitting}
+            maxLength={PASSCODE_LENGTH}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onChange={(event) => {
+              const nextValue = event.target.value.slice(0, PASSCODE_LENGTH);
+              setPasscode(nextValue);
+            }}
+            aria-label="登录口令"
+            className={[
+              "auth-passcode-input",
+              isExpanded ? "auth-passcode-input-expanded" : "",
+              isError ? "auth-passcode-input-error" : "",
+            ]
+              .filter((className) => className.length > 0)
+              .join(" ")}
+          />
+        </form>
+      </section>
     </main>
   );
 }

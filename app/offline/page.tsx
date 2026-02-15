@@ -1,4 +1,4 @@
-export default function OfflinePage() {
+﻿export default function OfflinePage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <section className="panel w-full max-w-md p-6 text-center">
@@ -10,4 +10,3 @@ export default function OfflinePage() {
     </main>
   );
 }
-
