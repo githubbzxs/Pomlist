@@ -62,6 +62,23 @@ npm run test
 npm run build
 ```
 
+## 迁移与 iOS 构建
+
+- 迁移导出文档：`docs/migration-export.md`
+- 未签名 IPA 文档：`docs/ios-unsigned-ipa.md`
+
+### 导出 PomlistMigrationV1
+
+```bash
+node tools/migration/export-pomlist-migration-v1.mjs
+```
+
+### GitHub Actions 生成未签名 IPA
+
+- workflow：`.github/workflows/ios-unsigned-ipa.yml`
+- 在 GitHub Actions 手动触发 `iOS Unsigned IPA`
+- 完成后在 Artifacts 下载 `unsigned-ipa-<scheme>`
+
 ## API 概览
 
 - `POST /api/auth/sign-in`
