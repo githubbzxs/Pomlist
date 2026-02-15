@@ -506,3 +506,25 @@
   - Why：该改动影响首页主视觉，需在测试机验收实际显示。
   - Impact：大陆机 `C:\www\pomlist`，进程 `pomlist`（PM2 id 12）。
   - Verify：`git rev-parse --short HEAD` 为 `3e275b4`；`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
+
+## Decisions（增量）
+
+- **[2026-02-15] Today 视觉细节八项调整**：完成主背景、层级色、进度区间距/厚度、计数显示、按钮样式与标题文案统一。
+  - Why：按最新交互与视觉反馈提升可读性与信息层级。
+  - Impact：`app/today/page.tsx`、`app/globals.css`。
+  - Verify：`npm run lint && npm run test && npm run typecheck && npm run build` 全通过。
+
+- **[2026-02-15] 大陆机 PM2 启动命令修正**：将启动方式从直接调用 `npm` 改为通过 `cmd /c` 启动。
+  - Why：`pm2 start npm ...` 在当前环境会把 `npm.cmd` 当作 JS 执行，触发 `SyntaxError: Unexpected token ':'` 并反复重启。
+  - Impact：部署命令改为 `pm2 start cmd --name pomlist -- /c "npm run start -- -p 3005"`。
+  - Verify：`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
+
+## Commands（增量）
+
+- **[2026-02-15] 本地全量校验**：`npm run lint && npm run test && npm run typecheck && npm run build`
+- **[2026-02-15] 大陆机发布（修正版）**：`pm2 delete pomlist -> rmdir node_modules/.next -> npm ci -> npm run build -> pm2 start cmd --name pomlist -- /c "npm run start -- -p 3005"`
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：`main` 已推送至 `b7aae87`，大陆测试机 `C:\www\pomlist` 已完成重部署并回源正常（PM2 id 14）。
+- **[2026-02-15] 下一步**：如需，我可以补做一次 `pomlist.0xpsyche.me` 公网 HTTPS 访问验收。
