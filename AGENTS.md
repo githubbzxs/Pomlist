@@ -422,3 +422,15 @@
 
 - **[2026-02-15] 当前状态**：6 条视觉与统计改动已完成，并通过本地 `lint/test/typecheck/build`。
 - **[2026-02-15] 下一步**：大陆 VPS 重部署并验收 `today` 页面按钮可读性与统计区块显示。
+
+## Decisions（增量）
+
+- **[2026-02-15] 大陆机重部署完成（本轮6项UI调整）**：按 `pm2 delete -> rmdir node_modules/.next -> npm ci -> npm run build -> pm2 start` 流程完成重建。
+  - Why：落实本轮 1~6 条视觉与统计需求并确保线上一致。
+  - Impact：大陆机 `C:\www\pomlist`，进程 `pomlist`（PM2 id 9）。
+  - Verify：`pm2 ls` 显示 `pomlist` online；`curl -I http://127.0.0.1:3005/today` 返回 `HTTP/1.1 200 OK`。
+
+## Status / Next（增量）
+
+- **[2026-02-15] 当前状态**：`main` 已推送至 `c0dcf45`，大陆 VPS 已部署并回源正常。
+- **[2026-02-15] 下一步**：如需我可继续把 `today` 的“周期视角”文案从“近 7 天与 30 天”同步改成与当前展示完全一致。
