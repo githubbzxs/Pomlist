@@ -986,8 +986,9 @@ export default function TodayPage() {
 
   const centerPanel = (
     <div className="canvas-panel-content canvas-panel-content-home">
-      <header className="canvas-panel-header">
-        <h1 className="page-title text-2xl font-bold text-main">Pomlist</h1>
+      <header className="canvas-panel-header items-baseline">
+        <h1 className="page-title text-2xl font-bold text-main">Task</h1>
+        <span className="text-xs text-subtle tracking-[0.08em]">Pomlist</span>
       </header>
 
       <section className="mobile-main-panel mobile-main-panel--frameless panel-glass-home panel-glass-stack grow">
@@ -1009,10 +1010,6 @@ export default function TodayPage() {
         ) : null}
 
         <div className="mobile-main-task-area">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="page-title text-lg font-bold text-main">Tasks</h2>
-          </div>
-
           {centerTasks.length === 0 ? null : (
             <div className="md-task-list home-task-list panel-glass-list">
               {centerTasks.map((task) => (
@@ -1038,8 +1035,8 @@ export default function TodayPage() {
             type="button"
             className="btn-muted home-add-task-btn"
             onClick={() => setDrawerOpen(true)}
-            aria-label="添加任务"
-            title="添加任务"
+            aria-label="选择任务"
+            title="选择任务"
           >
             <span aria-hidden>+</span>
           </button>
@@ -1073,7 +1070,7 @@ export default function TodayPage() {
     <div className="canvas-panel-content panel-glass-task">
       <header className="canvas-panel-header">
         <div>
-          <h2 className="page-title text-2xl font-bold text-main">Tasks</h2>
+          <h2 className="page-title text-2xl font-bold text-main">Task</h2>
         </div>
         <div className="flex items-center gap-2">
           <button
