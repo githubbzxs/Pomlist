@@ -922,8 +922,14 @@ export default function TodayPage() {
         </div>
 
         <div className="mobile-main-actions mobile-main-actions--floating panel-glass-footer">
-          <button type="button" className="btn-muted h-11 px-4 text-sm" onClick={() => setDrawerOpen(true)}>
-            添加任务
+          <button
+            type="button"
+            className="btn-muted home-add-task-btn"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="添加任务"
+            title="添加任务"
+          >
+            <span aria-hidden>+</span>
           </button>
           {session ? (
             <button
