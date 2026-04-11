@@ -1,0 +1,297 @@
+name: iOS Signed IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_channel:
+        description: "发布渠道标识（仅用于页面展示）"
+        required: false
+        default: "ad-hoc"
+      publish_pages:
+        description: "是否同步发布到 GitHub Pages 下载页"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ipa-pages
+  cancel-in-progress: false
+
+env:
+  APP_NAME: Pomlist
+  PROJECT_NAME: Pomlist
+  SCHEME_NAME: Pomlist
+  BUNDLE_ID: me.0xpsyche.Pomlist
+  EXPORT_METHOD: ad-hoc
+  CODE_SIGN_IDENTITY: Apple Distribution
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    outputs:
+      page_path: ${{ steps.meta.outputs.page_path }}
+      page_url: ${{ steps.meta.outputs.page_url }}
+      ota_url: ${{ steps.meta.outputs.ota_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Project
+        run: xcodegen generate
+
+      - name: Install Apple Certificate And Profile
+        env:
+          IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 }}
+          IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+          PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+
+          echo -n "$IOS_BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+          echo -n "$IOS_MOBILEPROVISION_BASE64" | base64 --decode -o "$PROFILE_PATH"
+
+          security create-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$IOS_P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$IOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$PROFILE_PLIST")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$PROFILE_PLIST")
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+
+          {
+            echo "PROFILE_UUID=$PROFILE_UUID"
+            echo "PROFILE_NAME=$PROFILE_NAME"
+          } >> "$GITHUB_ENV"
+
+      - name: Resolve Build Metadata
+        id: meta
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          INPUT_RELEASE_CHANNEL: ${{ inputs.release_channel }}
+        run: |
+          set -euo pipefail
+
+          PAGE_PATH="download"
+          PAGE_URL="https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME}/${PAGE_PATH}/"
+          OTA_URL="itms-services://?action=download-manifest&url=${PAGE_URL}manifest.plist"
+          RELEASE_CHANNEL="${INPUT_RELEASE_CHANNEL:-ad-hoc}"
+
+          {
+            echo "page_path=$PAGE_PATH"
+            echo "page_url=$PAGE_URL"
+            echo "ota_url=$OTA_URL"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "RELEASE_CHANNEL=$RELEASE_CHANNEL" >> "$GITHUB_ENV"
+          echo "PAGE_URL=$PAGE_URL" >> "$GITHUB_ENV"
+          echo "OTA_URL=$OTA_URL" >> "$GITHUB_ENV"
+
+      - name: Archive Signed App
+        env:
+          IOS_TEAM_ID: ${{ vars.IOS_TEAM_ID }}
+          IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+          IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD }}
+          IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY }}
+        run: |
+          set -euo pipefail
+
+          FINAL_BUNDLE_ID="${IOS_BUNDLE_ID:-$BUNDLE_ID}"
+          FINAL_EXPORT_METHOD="${IOS_EXPORT_METHOD:-$EXPORT_METHOD}"
+          FINAL_SIGN_IDENTITY="${IOS_CODE_SIGN_IDENTITY:-$CODE_SIGN_IDENTITY}"
+
+          if [ -z "${IOS_TEAM_ID:-}" ]; then
+            echo "缺少仓库变量 IOS_TEAM_ID，无法执行签名导出。"
+            exit 1
+          fi
+
+          mkdir -p build
+
+          xcodebuild archive \
+            -project "${PROJECT_NAME}.xcodeproj" \
+            -scheme "${SCHEME_NAME}" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "build/${APP_NAME}.xcarchive" \
+            PRODUCT_BUNDLE_IDENTIFIER="$FINAL_BUNDLE_ID" \
+            DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$FINAL_SIGN_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>export</string>
+            <key>method</key>
+            <string>${FINAL_EXPORT_METHOD}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>${FINAL_SIGN_IDENTITY}</string>
+            <key>teamID</key>
+            <string>${IOS_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${FINAL_BUNDLE_ID}</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+            <key>thinning</key>
+            <string>&lt;none&gt;</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Export IPA
+        run: |
+          set -euo pipefail
+
+          xcodebuild -exportArchive \
+            -archivePath "build/${APP_NAME}.xcarchive" \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist
+
+      - name: Prepare Download Site
+        env:
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+        run: |
+          set -euo pipefail
+
+          FINAL_BUNDLE_ID="${IOS_BUNDLE_ID:-$BUNDLE_ID}"
+          mkdir -p build/site/download
+
+          IPA_PATH=$(find build/export -maxdepth 1 -name "*.ipa" | head -n 1)
+          APP_PATH="build/${APP_NAME}.xcarchive/Products/Applications/${APP_NAME}.app"
+
+          cp "$IPA_PATH" "build/site/download/${APP_NAME}.ipa"
+          cp docs/download/index.html build/site/download/index.html
+          cp docs/download/styles.css build/site/download/styles.css
+          touch build/site/.nojekyll
+
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Info.plist")
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Info.plist")
+          TITLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$APP_PATH/Info.plist")
+
+          cat > build/site/download/latest.json <<JSON
+          {
+            "appName": "${APP_NAME}",
+            "displayName": "${TITLE}",
+            "version": "${VERSION}",
+            "build": "${BUILD}",
+            "channel": "${RELEASE_CHANNEL}",
+            "publishedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "ipaUrl": "${PAGE_URL}${APP_NAME}.ipa",
+            "manifestUrl": "${PAGE_URL}manifest.plist",
+            "otaUrl": "${OTA_URL}",
+            "runUrl": "${RUN_URL}",
+            "repoUrl": "${REPOSITORY_URL}"
+          }
+          JSON
+
+          cat > build/site/download/manifest.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>items</key>
+            <array>
+              <dict>
+                <key>assets</key>
+                <array>
+                  <dict>
+                    <key>kind</key>
+                    <string>software-package</string>
+                    <key>url</key>
+                    <string>${PAGE_URL}${APP_NAME}.ipa</string>
+                  </dict>
+                </array>
+                <key>metadata</key>
+                <dict>
+                  <key>bundle-identifier</key>
+                  <string>${FINAL_BUNDLE_ID}</string>
+                  <key>bundle-version</key>
+                  <string>${BUILD}</string>
+                  <key>kind</key>
+                  <string>software</string>
+                  <key>title</key>
+                  <string>${TITLE}</string>
+                </dict>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+
+          cat > build/site/index.html <<HTML
+          <!doctype html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8" />
+            <meta http-equiv="refresh" content="0; url=./download/" />
+            <title>Pomlist 下载</title>
+          </head>
+          <body>
+            <p>正在跳转到下载页：<a href="./download/">./download/</a></p>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pomlist-signed-ipa
+          path: |
+            build/export/*.ipa
+            build/site/download/manifest.plist
+            build/site/download/latest.json
+
+      - name: Upload Pages Artifact
+        if: ${{ inputs.publish_pages != false }}
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/site
+
+  deploy-pages:
+    if: ${{ inputs.publish_pages != false }}
+    runs-on: ubuntu-latest
+    needs: build-ipa
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
