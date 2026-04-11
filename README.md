@@ -113,6 +113,12 @@ GitHub Actions 会自动完成：
 - 归档无签名 `.xcarchive`
 - 上传构建产物到 Actions Artifacts
 
+无签名 IPA：
+
+- 推送到 `main` 后会自动触发 `.github/workflows/ios-unsigned-ipa.yml`
+- 该工作流会生成 `Pomlist.ipa` 并发布到 GitHub Pages 下载页
+- 注意：这是未签名 IPA，不能直接安装到 iPhone / iPad
+
 签名导出 IPA：
 
 - 手动触发 `.github/workflows/ios-ipa-release.yml`
@@ -128,14 +134,20 @@ GitHub Actions 会自动完成：
 
 ## Packaging Note
 
-当前仓库内的 GitHub Actions 采用“可直接跑通的无签名打包”方案：
+当前仓库内的 GitHub Actions 默认采用“无签名 IPA 导出 + 页面发布”方案：
 
 - `Pomlist-simulator-app.zip`：可用于模拟器验收与 UI 回归
 - `Pomlist-xcarchive.zip`：可作为后续签名分发的基础产物
+- `Pomlist.ipa`：未签名 IPA，可用于留档、二次签名或研究
 
-如果你后面要产出正式 `.ipa`，只需在 workflow 中增加 Apple 证书、描述文件和 `xcodebuild -exportArchive` 步骤即可。
+如果你后面要产出“可直接安装到真机”的正式 `.ipa`，仍然需要 Apple 证书和描述文件。
 
-现在仓库已经包含正式的 IPA 导出工作流，使用前请在 GitHub 仓库中配置：
+如果你暂时没有证书，现在只需要等 `iOS Unsigned IPA` 工作流成功一次，就会得到固定下载链接：
+
+- 下载页：`https://githubbzxs.github.io/Pomlist/download/`
+- IPA：`https://githubbzxs.github.io/Pomlist/download/Pomlist.ipa`
+
+如果你以后要启用签名版 IPA，再在 GitHub 仓库中配置：
 
 - `Secrets`
   - `IOS_BUILD_CERTIFICATE_BASE64`
@@ -150,15 +162,11 @@ GitHub Actions 会自动完成：
 
 同时请在仓库 `Settings -> Pages` 中把发布源切到 `GitHub Actions`。
 
-首次成功运行 `iOS Signed IPA` 工作流后，固定下载地址为：
+首次成功运行 `iOS Signed IPA` 工作流后，签名版会覆盖同一路径，并额外提供：
 
 - 下载页：`https://githubbzxs.github.io/Pomlist/download/`
 - IPA：`https://githubbzxs.github.io/Pomlist/download/Pomlist.ipa`
 - Manifest：`https://githubbzxs.github.io/Pomlist/download/manifest.plist`
-
-设备侧 OTA 安装入口：
-
-- `itms-services://?action=download-manifest&url=https://githubbzxs.github.io/Pomlist/download/manifest.plist`
 
 ## Design Note
 
