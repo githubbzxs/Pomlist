@@ -40,7 +40,7 @@ Pomlist 不是“时间一到就结束”的传统倒计时番茄钟，而是把
 - 会话内勾选：专注过程中可逐项勾选，进度与完成率即时更新。
 - 历史记录：保留每次已结束任务钟的时间、时长、完成数量与任务快照。
 - 数据统计：提供今日 / 7 天 / 30 天指标、连续专注天数、分类贡献、24 小时时段分布与效率视角。
-- 原生观感：iOS 26 上使用官方 Liquid Glass API，较低系统版本自动回退到 `Material` 风格。
+- 原生观感：当前以苹果原生 `Material` 玻璃层次实现为主，优先保证 Xcode / GitHub Actions 可构建。
 
 ## Tech Stack
 
@@ -170,4 +170,4 @@ GitHub Actions 会自动完成：
 
 ## Design Note
 
-根据 Apple 官方文档，Liquid Glass 已在较新 SDK 中提供 `glassEffect(_:in:)`、`GlassEffectContainer` 等能力；本仓库在支持的系统上优先使用这些 API，在较低版本回退到 `ultraThinMaterial`，保证“苹果原生感”与兼容性同时成立。
+根据 Apple 官方文档，Liquid Glass 在较新 SDK 中提供了更完整的玻璃效果 API；当前仓库为了兼容 GitHub Actions runner 上的 Xcode 环境，先统一使用稳定的 `ultraThinMaterial` 方案实现苹果原生玻璃感，后续可在 CI 环境跟上后再切回官方 Liquid Glass API。

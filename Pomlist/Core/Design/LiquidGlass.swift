@@ -53,11 +53,7 @@ struct GlassCluster<Content: View>: View {
     }
 
     var body: some View {
-        if #available(iOS 26.0, *) {
-            GlassEffectContainer(spacing: spacing) {
-                content
-            }
-        } else {
+        VStack(spacing: spacing) {
             content
         }
     }
@@ -85,18 +81,16 @@ struct GlassCard<Content: View>: View {
         content
             .padding(padding)
             .background {
-                if #available(iOS 26.0, *) {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.white.opacity(0.001))
-                        .glassEffect(.regular.tint(tint), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                } else {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                .stroke(PomlistPalette.stroke, lineWidth: 1)
-                        }
-                }
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(tint.opacity(0.08))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(PomlistPalette.stroke, lineWidth: 1)
+                    }
             }
             .overlay(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
