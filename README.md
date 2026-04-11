@@ -1,173 +1,55 @@
-<div align="center">
-
 # Pomlist
 
-<p><strong>任务驱动番茄钟的 iOS 原生重构版：SwiftUI + Liquid Glass + 本地持久化</strong></p>
+当前仓库已经按“重写前清场”处理过，旧业务实现已移除，只保留给下一位 AI 继续接手所需的最小 iOS / IPA 打包骨架。
 
-<p>
-  Pomlist 已从原先的 Next.js Web 应用重构为 iPhone / iPad 原生 App。它把 4 位口令登录、任务库、单活跃任务钟、历史记录、复盘统计和设置能力收进一套更接近苹果系统应用的交互里，并优先采用 Liquid Glass 视觉语言。
-</p>
+## 当前状态
 
-<p>
-  <img src="https://img.shields.io/badge/Swift-6-FA7343?style=flat&logo=swift&logoColor=white" alt="Swift 6" />
-  <img src="https://img.shields.io/badge/SwiftUI-Native-0A84FF?style=flat&logo=apple&logoColor=white" alt="SwiftUI" />
-  <img src="https://img.shields.io/badge/iOS-18%2B-111827?style=flat&logo=ios&logoColor=white" alt="iOS 18+" />
-  <img src="https://img.shields.io/badge/Liquid_Glass-iOS_26-7C3AED?style=flat" alt="Liquid Glass" />
-  <img src="https://img.shields.io/badge/XcodeGen-Project-blue?style=flat" alt="XcodeGen" />
-  <img src="https://img.shields.io/badge/GitHub_Actions-iOS_Build-2088FF?style=flat&logo=githubactions&logoColor=white" alt="GitHub Actions" />
-  <img src="https://img.shields.io/badge/GitHub_Pages-IPA_Download-0A84FF?style=flat&logo=githubpages&logoColor=white" alt="GitHub Pages IPA Download" />
-</p>
+- 已删除原有任务、统计、历史、存储等业务代码。
+- 已删除当前业务测试，只保留一个最小测试占位。
+- 已保留 iOS 工程最小入口，仓库不会变成完全空目录。
+- 已保留 IPA 打包相关链路，方便后续继续生成工程、构建、归档、导出 IPA。
 
-</div>
+## 当前保留内容
 
-## Overview
+- `project.yml`
+  - XcodeGen 工程描述，下一位 AI 可以直接继续扩展 targets、sources、capabilities。
+- `Pomlist/App/*`
+  - 最小 `SwiftUI` 占位入口，只用于保证工程骨架存在。
+- `Pomlist/Info.plist`
+  - iOS 应用基础配置。
+- `Pomlist/Resources/*`
+  - 资源目录、AppIcon、预览资源骨架。
+- `PomlistTests/*`
+  - 最小测试目标占位，方便 CI 与工程结构继续沿用。
+- `.github/workflows/*`
+  - GitHub Actions 的构建、无签名 IPA、签名 IPA 工作流。
+- `docs/download/*`
+  - GitHub Pages 下载页模板，供 IPA 发布页继续使用。
 
-Pomlist 不是“时间一到就结束”的传统倒计时番茄钟，而是把一次专注定义成“围绕一组任务推进到什么程度”。你可以先整理任务，再挑选若干任务开启一轮专注；进行中随时勾选完成项，结束时记录完成数量、完成率、时长、分类贡献、时段分布与效率变化。
+## 已清除内容
 
-这次重构保留了原 Web 版的核心能力，但整体交互改成更像苹果原生应用：
+- 所有原有业务模块与页面实现。
+- 原有任务模型、统计逻辑、本地存储逻辑。
+- 原有共享弹层、历史页、设置页、任务页等具体功能代码。
 
-- `TabView` 驱动的 Today / Task / History / Stats 四个主页面
-- 原生 `NavigationStack`、`sheet`、`Form`、`swipeActions` 与列表
-- Liquid Glass 风格卡片、按钮、指标胶囊与背景层次
-- 本地 JSON 文件数据库，单设备即可运行
+## 给下一位 AI 的接手建议
 
-## Features
+建议从下面几个入口开始重写：
 
-- 4 位口令登录：首次默认口令为 `0xbp`，支持在应用内修改与退出登录。
-- 任务库：支持新增、编辑、完成/恢复、删除任务，并维护分类、标签与具体内容。
-- 任务钟：从任务列表中多选任务开启专注，只允许单个 active session。
-- 会话内增量加任务：专注进行中可继续向本轮会话追加任务。
-- 会话内勾选：专注过程中可逐项勾选，进度与完成率即时更新。
-- 历史记录：保留每次已结束任务钟的时间、时长、完成数量与任务快照。
-- 数据统计：提供今日 / 7 天 / 30 天指标、连续专注天数、分类贡献、24 小时时段分布与效率视角。
-- 原生观感：当前以苹果原生 `Material` 玻璃层次实现为主，优先保证 Xcode / GitHub Actions 可构建。
+1. 先改 `README.md`，把新的产品定义写清楚。
+2. 再改 `project.yml`，决定是否继续沿用当前 target 结构。
+3. 然后从 `Pomlist/App/RootView.swift` 开始重建首页和导航。
+4. 如果要扩展打包或下载分发，继续沿用 `.github/workflows/` 与 `docs/download/`。
 
-## Tech Stack
-
-- 客户端：`Swift 6`、`SwiftUI`、`Observation / ObservableObject`
-- 可视化：`Swift Charts`
-- 持久化：本地 `JSON` 文件，存于 App `Application Support`
-- 工程管理：`XcodeGen`
-- CI 打包：`GitHub Actions` + `xcodebuild`
-
-## Project Structure
-
-```text
-Pomlist/
-├── App/                  App 入口、根视图、Tab 壳层
-├── Core/
-│   ├── Design/           Liquid Glass 视觉封装与主题色
-│   └── Extensions/       日期与格式化扩展
-├── Features/
-│   ├── Auth/             口令登录
-│   ├── Today/            今日专注主页
-│   ├── Tasks/            任务库与元信息维护
-│   ├── History/          已完成任务钟历史
-│   ├── Stats/            统计与图表
-│   └── Shared/           设置、任务编辑、任务选择等共享弹层
-├── Models/               任务、会话、统计模型
-├── Services/             本地存储与统计计算
-└── Store/                全局状态与业务动作
-.github/workflows/
-└── ios-build.yml         GitHub Actions 构建与打包
-docs/
-└── download/             IPA 下载页源码
-project.yml               XcodeGen 工程描述
-```
-
-## Quick Start
-
-1. 安装 XcodeGen。
+## 仍可沿用的常用命令
 
 ```bash
 brew install xcodegen
-```
-
-2. 在仓库根目录生成工程。
-
-```bash
 xcodegen generate
+xcodebuild test -project Pomlist.xcodeproj -scheme Pomlist -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16'
+xcodebuild archive -project Pomlist.xcodeproj -scheme Pomlist -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
 ```
 
-3. 用 Xcode 打开 `Pomlist.xcodeproj`，选择 `Pomlist` Scheme。
+## 说明
 
-4. 直接运行到模拟器或真机。
-
-5. 首次进入时使用默认口令 `0xbp` 登录。
-
-## Build
-
-本地命令：
-
-```bash
-xcodegen generate
-xcodebuild -project Pomlist.xcodeproj -scheme Pomlist -destination 'platform=iOS Simulator,name=iPhone 16' test
-xcodebuild -project Pomlist.xcodeproj -scheme Pomlist -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-```
-
-GitHub Actions 会自动完成：
-
-- 生成 Xcode 工程
-- 运行单元测试
-- 构建 Release 模拟器 `.app`
-- 归档无签名 `.xcarchive`
-- 上传构建产物到 Actions Artifacts
-
-无签名 IPA：
-
-- 推送到 `main` 后会自动触发 `.github/workflows/ios-unsigned-ipa.yml`
-- 该工作流会生成 `Pomlist.ipa` 并发布到 GitHub Pages 下载页
-- 注意：这是未签名 IPA，不能直接安装到 iPhone / iPad
-
-签名导出 IPA：
-
-- 手动触发 `.github/workflows/ios-ipa-release.yml`
-- 成功后会生成签名 IPA、OTA `manifest.plist`、`latest.json`
-- 如果开启 `publish_pages`，还会自动发布到 GitHub Pages 下载页
-
-## Runtime Model
-
-- 默认仅单用户本机使用。
-- 登录态、本地任务和会话历史都写入应用沙盒的 JSON 文件。
-- 不依赖 Supabase、Next.js API 或远程数据库。
-- 如需后续扩展到 iCloud / CloudKit / 自建同步层，可以在 `Store` 和 `Services` 层继续演进。
-
-## Packaging Note
-
-当前仓库内的 GitHub Actions 默认采用“无签名 IPA 导出 + 页面发布”方案：
-
-- `Pomlist-simulator-app.zip`：可用于模拟器验收与 UI 回归
-- `Pomlist-xcarchive.zip`：可作为后续签名分发的基础产物
-- `Pomlist.ipa`：未签名 IPA，可用于留档、二次签名或研究
-
-如果你后面要产出“可直接安装到真机”的正式 `.ipa`，仍然需要 Apple 证书和描述文件。
-
-如果你暂时没有证书，现在只需要等 `iOS Unsigned IPA` 工作流成功一次，就会得到固定下载链接：
-
-- 下载页：`https://githubbzxs.github.io/Pomlist/download/`
-- IPA：`https://githubbzxs.github.io/Pomlist/download/Pomlist.ipa`
-
-如果你以后要启用签名版 IPA，再在 GitHub 仓库中配置：
-
-- `Secrets`
-  - `IOS_BUILD_CERTIFICATE_BASE64`
-  - `IOS_P12_PASSWORD`
-  - `IOS_MOBILEPROVISION_BASE64`
-  - `IOS_KEYCHAIN_PASSWORD`
-- `Variables`
-  - `IOS_TEAM_ID`
-  - `IOS_BUNDLE_ID`（可选，默认 `me.0xpsyche.Pomlist`）
-  - `IOS_EXPORT_METHOD`（可选，默认 `ad-hoc`）
-  - `IOS_CODE_SIGN_IDENTITY`（可选，默认 `Apple Distribution`）
-
-同时请在仓库 `Settings -> Pages` 中把发布源切到 `GitHub Actions`。
-
-首次成功运行 `iOS Signed IPA` 工作流后，签名版会覆盖同一路径，并额外提供：
-
-- 下载页：`https://githubbzxs.github.io/Pomlist/download/`
-- IPA：`https://githubbzxs.github.io/Pomlist/download/Pomlist.ipa`
-- Manifest：`https://githubbzxs.github.io/Pomlist/download/manifest.plist`
-
-## Design Note
-
-根据 Apple 官方文档，Liquid Glass 在较新 SDK 中提供了更完整的玻璃效果 API；当前仓库为了兼容 GitHub Actions runner 上的 Xcode 环境，先统一使用稳定的 `ultraThinMaterial` 方案实现苹果原生玻璃感，后续可在 CI 环境跟上后再切回官方 Liquid Glass API。
+这次不是单纯把所有文件删空，而是刻意保留了“可继续打包 IPA 的最小骨架”。这样你把仓库交给别的 AI 时，它既不会被旧业务代码污染，也不需要从零重建打包链路。
