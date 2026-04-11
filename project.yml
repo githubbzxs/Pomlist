@@ -19,7 +19,9 @@ targets:
     platform: iOS
     deploymentTarget: "18.0"
     sources:
-      - path: Pomlist/App
+      - path: Pomlist
+        excludes:
+          - Resources
     resources:
       - path: Pomlist/Resources
     info:
