@@ -1,0 +1,158 @@
+name: iOS Unsigned IPA
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      release_channel:
+        description: "发布渠道标识（仅用于页面展示）"
+        required: false
+        default: "unsigned"
+      publish_pages:
+        description: "是否同步发布到 GitHub Pages 下载页"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: unsigned-ipa-pages
+  cancel-in-progress: false
+
+env:
+  APP_NAME: Pomlist
+  PROJECT_NAME: Pomlist
+  SCHEME_NAME: Pomlist
+  PAGE_PATH: download
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Project
+        run: xcodegen generate
+
+      - name: Run Tests
+        run: |
+          xcodebuild test \
+            -project "${PROJECT_NAME}.xcodeproj" \
+            -scheme "${SCHEME_NAME}" \
+            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
+            -derivedDataPath build/test
+
+      - name: Archive Unsigned App
+        run: |
+          set -euo pipefail
+
+          xcodebuild archive \
+            -project "${PROJECT_NAME}.xcodeproj" \
+            -scheme "${SCHEME_NAME}" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "build/${APP_NAME}.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package Unsigned IPA
+        env:
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          INPUT_RELEASE_CHANNEL: ${{ inputs.release_channel }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p build/Payload build/site/${PAGE_PATH}
+
+          APP_PATH="build/${APP_NAME}.xcarchive/Products/Applications/${APP_NAME}.app"
+          cp -R "$APP_PATH" build/Payload/
+
+          (
+            cd build
+            /usr/bin/zip -qry "${APP_NAME}.ipa" Payload
+          )
+
+          cp "build/${APP_NAME}.ipa" "build/site/${PAGE_PATH}/${APP_NAME}.ipa"
+          cp docs/download/index.html "build/site/${PAGE_PATH}/index.html"
+          cp docs/download/styles.css "build/site/${PAGE_PATH}/styles.css"
+          touch build/site/.nojekyll
+
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Info.plist")
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Info.plist")
+          TITLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$APP_PATH/Info.plist")
+          RELEASE_CHANNEL="${INPUT_RELEASE_CHANNEL:-unsigned}"
+          PAGE_URL="https://${REPOSITORY_OWNER}.github.io/${REPOSITORY_NAME}/${PAGE_PATH}/"
+
+          cat > "build/site/${PAGE_PATH}/latest.json" <<JSON
+          {
+            "appName": "${APP_NAME}",
+            "displayName": "${TITLE}",
+            "version": "${VERSION}",
+            "build": "${BUILD}",
+            "channel": "${RELEASE_CHANNEL}",
+            "signed": false,
+            "installNote": "这是未签名 IPA，可用于留档、二次签名或研究，不可直接安装到 iPhone / iPad。",
+            "publishedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "ipaUrl": "${PAGE_URL}${APP_NAME}.ipa",
+            "runUrl": "${RUN_URL}",
+            "repoUrl": "${REPOSITORY_URL}"
+          }
+          JSON
+
+          cat > build/site/index.html <<HTML
+          <!doctype html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8" />
+            <meta http-equiv="refresh" content="0; url=./${PAGE_PATH}/" />
+            <title>Pomlist 下载</title>
+          </head>
+          <body>
+            <p>正在跳转到下载页：<a href="./${PAGE_PATH}/">./${PAGE_PATH}/</a></p>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload Unsigned IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pomlist-unsigned-ipa
+          path: |
+            build/Pomlist.ipa
+            build/site/download/latest.json
+
+      - name: Upload Pages Artifact
+        if: ${{ github.event_name == 'push' || inputs.publish_pages != false }}
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/site
+
+  deploy-pages:
+    if: ${{ github.event_name == 'push' || inputs.publish_pages != false }}
+    runs-on: ubuntu-latest
+    needs: build-ipa
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
