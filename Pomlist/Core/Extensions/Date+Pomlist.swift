@@ -22,7 +22,7 @@ extension Date {
 
 extension Int {
     func pomlistDurationText() -> String {
-        let safeValue = max(self, 0)
+        let safeValue = Swift.max(self, 0)
         let minutes = safeValue / 60
 
         if minutes < 60 {
@@ -35,7 +35,7 @@ extension Int {
     }
 
     func pomlistClockText() -> String {
-        let safeValue = max(self, 0)
+        let safeValue = Swift.max(self, 0)
         let minutes = safeValue / 60
         let seconds = safeValue % 60
         return String(format: "%02d:%02d", minutes, seconds)
