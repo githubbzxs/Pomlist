@@ -279,7 +279,7 @@ jobs:
 
       - name: Upload Pages Artifact
         if: ${{ inputs.publish_pages != false }}
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@v3
         with:
           path: build/site
 
@@ -294,4 +294,4 @@ jobs:
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4

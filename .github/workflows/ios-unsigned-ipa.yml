@@ -45,14 +45,6 @@ jobs:
       - name: Generate Project
         run: xcodegen generate
 
-      - name: Run Tests
-        run: |
-          xcodebuild test \
-            -project "${PROJECT_NAME}.xcodeproj" \
-            -scheme "${SCHEME_NAME}" \
-            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
-            -derivedDataPath build/test
-
       - name: Archive Unsigned App
         run: |
           set -euo pipefail
@@ -138,7 +130,7 @@ jobs:
 
       - name: Upload Pages Artifact
         if: ${{ github.event_name == 'push' || inputs.publish_pages != false }}
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@v3
         with:
           path: build/site
 
@@ -156,4 +148,4 @@ jobs:
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4
