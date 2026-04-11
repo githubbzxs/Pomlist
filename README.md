@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/Liquid_Glass-iOS_26-7C3AED?style=flat" alt="Liquid Glass" />
   <img src="https://img.shields.io/badge/XcodeGen-Project-blue?style=flat" alt="XcodeGen" />
   <img src="https://img.shields.io/badge/GitHub_Actions-iOS_Build-2088FF?style=flat&logo=githubactions&logoColor=white" alt="GitHub Actions" />
+  <img src="https://img.shields.io/badge/GitHub_Pages-IPA_Download-0A84FF?style=flat&logo=githubpages&logoColor=white" alt="GitHub Pages IPA Download" />
 </p>
 
 </div>
@@ -69,6 +70,8 @@ Pomlist/
 └── Store/                全局状态与业务动作
 .github/workflows/
 └── ios-build.yml         GitHub Actions 构建与打包
+docs/
+└── download/             IPA 下载页源码
 project.yml               XcodeGen 工程描述
 ```
 
@@ -110,6 +113,12 @@ GitHub Actions 会自动完成：
 - 归档无签名 `.xcarchive`
 - 上传构建产物到 Actions Artifacts
 
+签名导出 IPA：
+
+- 手动触发 `.github/workflows/ios-ipa-release.yml`
+- 成功后会生成签名 IPA、OTA `manifest.plist`、`latest.json`
+- 如果开启 `publish_pages`，还会自动发布到 GitHub Pages 下载页
+
 ## Runtime Model
 
 - 默认仅单用户本机使用。
@@ -125,6 +134,31 @@ GitHub Actions 会自动完成：
 - `Pomlist-xcarchive.zip`：可作为后续签名分发的基础产物
 
 如果你后面要产出正式 `.ipa`，只需在 workflow 中增加 Apple 证书、描述文件和 `xcodebuild -exportArchive` 步骤即可。
+
+现在仓库已经包含正式的 IPA 导出工作流，使用前请在 GitHub 仓库中配置：
+
+- `Secrets`
+  - `IOS_BUILD_CERTIFICATE_BASE64`
+  - `IOS_P12_PASSWORD`
+  - `IOS_MOBILEPROVISION_BASE64`
+  - `IOS_KEYCHAIN_PASSWORD`
+- `Variables`
+  - `IOS_TEAM_ID`
+  - `IOS_BUNDLE_ID`（可选，默认 `me.0xpsyche.Pomlist`）
+  - `IOS_EXPORT_METHOD`（可选，默认 `ad-hoc`）
+  - `IOS_CODE_SIGN_IDENTITY`（可选，默认 `Apple Distribution`）
+
+同时请在仓库 `Settings -> Pages` 中把发布源切到 `GitHub Actions`。
+
+首次成功运行 `iOS Signed IPA` 工作流后，固定下载地址为：
+
+- 下载页：`https://githubbzxs.github.io/Pomlist/download/`
+- IPA：`https://githubbzxs.github.io/Pomlist/download/Pomlist.ipa`
+- Manifest：`https://githubbzxs.github.io/Pomlist/download/manifest.plist`
+
+设备侧 OTA 安装入口：
+
+- `itms-services://?action=download-manifest&url=https://githubbzxs.github.io/Pomlist/download/manifest.plist`
 
 ## Design Note
 
