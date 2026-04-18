@@ -45,6 +45,9 @@ targets:
     type: bundle.unit-test
     platform: iOS
     deploymentTarget: "18.0"
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
     sources:
       - path: PomlistTests
     dependencies:
