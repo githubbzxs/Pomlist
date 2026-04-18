@@ -101,7 +101,7 @@ xcodegen generate
 
 ```bash
 xcodegen generate
-xcodebuild -project Pomlist.xcodeproj -scheme Pomlist -destination 'platform=iOS Simulator,name=iPhone 16' test
+xcodebuild -project Pomlist.xcodeproj -scheme Pomlist -destination 'platform=iOS Simulator,name=iPhone 17' test
 xcodebuild -project Pomlist.xcodeproj -scheme Pomlist -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 

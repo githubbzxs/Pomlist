@@ -34,7 +34,7 @@ jobs:
           xcodebuild test \
             -project Pomlist.xcodeproj \
             -scheme Pomlist \
-            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,OS=latest,name=iPhone 17' \
             -derivedDataPath build/test
 
       - name: Build Simulator App
