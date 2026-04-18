@@ -12,6 +12,58 @@ enum PomlistPalette {
     static let warning = Color(red: 0.965, green: 0.624, blue: 0.161)
 }
 
+extension View {
+    @ViewBuilder
+    func pomlistGlassSurface<S: Shape>(
+        tint: Color,
+        in shape: S,
+        elevated: Bool = true
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(.regular.tint(tint), in: shape)
+                .shadow(
+                    color: Color.black.opacity(elevated ? 0.08 : 0),
+                    radius: elevated ? 18 : 0,
+                    y: elevated ? 12 : 0
+                )
+        } else {
+            self
+                .background {
+                    shape
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            shape.fill(tint.opacity(0.08))
+                        }
+                        .overlay {
+                            shape.stroke(PomlistPalette.stroke, lineWidth: 1)
+                        }
+                }
+                .overlay {
+                    shape.stroke(Color.white.opacity(0.28), lineWidth: 0.8)
+                }
+                .shadow(
+                    color: Color.black.opacity(elevated ? 0.08 : 0),
+                    radius: elevated ? 18 : 0,
+                    y: elevated ? 12 : 0
+                )
+        }
+    }
+
+    @ViewBuilder
+    func pomlistInteractiveGlassSurface<S: Shape>(
+        tint: Color,
+        in shape: S
+    ) -> some View {
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(.regular.tint(tint).interactive(), in: shape)
+        } else {
+            self
+        }
+    }
+}
+
 struct PomlistBackground: View {
     var body: some View {
         ZStack {
@@ -53,8 +105,18 @@ struct GlassCluster<Content: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: spacing) {
-            content
+        Group {
+            if #available(iOS 26.0, *) {
+                GlassEffectContainer(spacing: spacing) {
+                    VStack(spacing: spacing) {
+                        content
+                    }
+                }
+            } else {
+                VStack(spacing: spacing) {
+                    content
+                }
+            }
         }
     }
 }
@@ -80,23 +142,10 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content
             .padding(padding)
-            .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .fill(tint.opacity(0.08))
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(PomlistPalette.stroke, lineWidth: 1)
-                    }
-            }
-            .overlay(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.28), lineWidth: 0.8)
-            }
-            .shadow(color: Color.black.opacity(0.08), radius: 18, y: 12)
+            .pomlistGlassSurface(
+                tint: tint,
+                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            )
     }
 }
 
@@ -114,41 +163,39 @@ struct GlassPill: View {
         .foregroundStyle(PomlistPalette.ink)
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background {
-            Capsule(style: .continuous)
-                .fill(.white.opacity(0.55))
-                .overlay {
-                    Capsule(style: .continuous)
-                        .stroke(tint.opacity(0.22), lineWidth: 1)
-                }
-        }
+        .pomlistGlassSurface(tint: tint.opacity(0.55), in: Capsule(style: .continuous), elevated: false)
     }
 }
 
 struct PrimaryGlassButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        let tint = PomlistPalette.accent.opacity(configuration.isPressed ? 0.76 : 0.92)
+
         configuration.label
             .font(.headline.weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(PomlistPalette.ink)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                PomlistPalette.accent.opacity(configuration.isPressed ? 0.78 : 0.96),
-                                PomlistPalette.accentSoft.opacity(configuration.isPressed ? 0.74 : 0.9)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+            .background {
+                if #unavailable(iOS 26.0) {
+                    shape
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    PomlistPalette.accent.opacity(configuration.isPressed ? 0.78 : 0.96),
+                                    PomlistPalette.accentSoft.opacity(configuration.isPressed ? 0.74 : 0.9)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        .overlay {
+                            shape.stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        }
+                }
             }
+            .pomlistInteractiveGlassSurface(tint: tint, in: shape)
             .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .animation(.spring(response: 0.22, dampingFraction: 0.88), value: configuration.isPressed)
     }

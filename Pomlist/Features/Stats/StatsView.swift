@@ -131,9 +131,10 @@ struct StatsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.white.opacity(0.6))
+        .pomlistGlassSurface(
+            tint: PomlistPalette.accent.opacity(0.2),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous),
+            elevated: false
         )
     }
 }

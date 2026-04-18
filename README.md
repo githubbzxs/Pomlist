@@ -2,17 +2,17 @@
 
 # Pomlist
 
-<p><strong>任务驱动番茄钟的 iOS 原生重构版：SwiftUI + Liquid Glass + 本地持久化</strong></p>
+<p><strong>任务驱动番茄钟的 iOS 原生重构版：SwiftUI + 官方 GlassEffect + 本地持久化</strong></p>
 
 <p>
-  Pomlist 已从原先的 Next.js Web 应用重构为 iPhone / iPad 原生 App。它把 4 位口令登录、任务库、单活跃任务钟、历史记录、复盘统计和设置能力收进一套更接近苹果系统应用的交互里，并优先采用 Liquid Glass 视觉语言。
+  Pomlist 已从原先的 Next.js Web 应用重构为 iPhone / iPad 原生 App。它把 4 位口令登录、任务库、单活跃任务钟、历史记录、复盘统计和设置能力收进一套更接近苹果系统应用的交互里，并在 iOS 26+ 上优先采用 Apple 官方 GlassEffect / GlassEffectContainer 体系。
 </p>
 
 <p>
   <img src="https://img.shields.io/badge/Swift-6-FA7343?style=flat&logo=swift&logoColor=white" alt="Swift 6" />
   <img src="https://img.shields.io/badge/SwiftUI-Native-0A84FF?style=flat&logo=apple&logoColor=white" alt="SwiftUI" />
   <img src="https://img.shields.io/badge/iOS-18%2B-111827?style=flat&logo=ios&logoColor=white" alt="iOS 18+" />
-  <img src="https://img.shields.io/badge/Liquid_Glass-iOS_26-7C3AED?style=flat" alt="Liquid Glass" />
+  <img src="https://img.shields.io/badge/GlassEffect-iOS_26-7C3AED?style=flat" alt="GlassEffect" />
   <img src="https://img.shields.io/badge/XcodeGen-Project-blue?style=flat" alt="XcodeGen" />
   <img src="https://img.shields.io/badge/GitHub_Actions-iOS_Build-2088FF?style=flat&logo=githubactions&logoColor=white" alt="GitHub Actions" />
   <img src="https://img.shields.io/badge/GitHub_Pages-IPA_Download-0A84FF?style=flat&logo=githubpages&logoColor=white" alt="GitHub Pages IPA Download" />
@@ -28,7 +28,7 @@ Pomlist 不是“时间一到就结束”的传统倒计时番茄钟，而是把
 
 - `TabView` 驱动的 Today / Task / History / Stats 四个主页面
 - 原生 `NavigationStack`、`sheet`、`Form`、`swipeActions` 与列表
-- Liquid Glass 风格卡片、按钮、指标胶囊与背景层次
+- iOS 26+ 使用 Apple 官方 `glassEffect` / `GlassEffectContainer`，旧系统自动回退到 `Material`
 - 本地 JSON 文件数据库，单设备即可运行
 
 ## Features
@@ -40,7 +40,7 @@ Pomlist 不是“时间一到就结束”的传统倒计时番茄钟，而是把
 - 会话内勾选：专注过程中可逐项勾选，进度与完成率即时更新。
 - 历史记录：保留每次已结束任务钟的时间、时长、完成数量与任务快照。
 - 数据统计：提供今日 / 7 天 / 30 天指标、连续专注天数、分类贡献、24 小时时段分布与效率视角。
-- 原生观感：当前以苹果原生 `Material` 玻璃层次实现为主，优先保证 Xcode / GitHub Actions 可构建。
+- 原生观感：iOS 26+ 使用 Apple 官方 `glassEffect` / `GlassEffectContainer`；旧系统保留 `Material` 兼容回退。
 
 ## Tech Stack
 
@@ -56,7 +56,7 @@ Pomlist 不是“时间一到就结束”的传统倒计时番茄钟，而是把
 Pomlist/
 ├── App/                  App 入口、根视图、Tab 壳层
 ├── Core/
-│   ├── Design/           Liquid Glass 视觉封装与主题色
+│   ├── Design/           官方 GlassEffect 兼容封装与主题色
 │   └── Extensions/       日期与格式化扩展
 ├── Features/
 │   ├── Auth/             口令登录
@@ -170,4 +170,4 @@ GitHub Actions 会自动完成：
 
 ## Design Note
 
-根据 Apple 官方文档，Liquid Glass 在较新 SDK 中提供了更完整的玻璃效果 API；当前仓库为了兼容 GitHub Actions runner 上的 Xcode 环境，先统一使用稳定的 `ultraThinMaterial` 方案实现苹果原生玻璃感，后续可在 CI 环境跟上后再切回官方 Liquid Glass API。
+Apple 对外的设计语言名称仍然是 `Liquid Glass`，但开发者真正接入的官方 API 是 SwiftUI 的 `glassEffect(_:in:)`、`GlassEffectContainer`、`glassEffectUnion` 和相关按钮样式 / 交互能力。当前仓库已经改为优先使用这套官方 API；若运行在较旧系统版本，会自动回退到 `Material` 实现以维持兼容性。

@@ -10,12 +10,12 @@ struct AuthView: View {
                 Spacer(minLength: 80)
 
                 GlassCluster(spacing: 18) {
-                    GlassPill(title: "Liquid Glass", systemImage: "sparkles", tint: PomlistPalette.accent)
+                    GlassPill(title: "glassEffect", systemImage: "sparkles", tint: PomlistPalette.accent)
 
                     SectionTitle(
                         eyebrow: "Pomlist",
                         title: "像苹果原生应用一样开始今天。",
-                        subtitle: "输入 4 位口令进入任务、任务钟、历史与统计。默认口令是 0xbp。"
+                        subtitle: "输入 4 位口令进入任务、任务钟、历史与统计。默认口令是 0xbp，iOS 26+ 会启用 Apple 官方 Glass API。"
                     )
 
                     GlassCard {

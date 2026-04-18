@@ -39,13 +39,10 @@ struct MetricCell: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.white.opacity(0.62))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(tint.opacity(0.18), lineWidth: 1)
-                }
+        .pomlistGlassSurface(
+            tint: tint.opacity(0.45),
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous),
+            elevated: false
         )
     }
 }
@@ -86,7 +83,11 @@ struct TaskTagList: View {
                     .foregroundStyle(PomlistPalette.accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(PomlistPalette.accent.opacity(0.12)))
+                    .pomlistGlassSurface(
+                        tint: PomlistPalette.accent.opacity(0.5),
+                        in: Capsule(),
+                        elevated: false
+                    )
 
                 ForEach(tags, id: \.self) { tag in
                     Text("#\(tag)")
@@ -94,7 +95,11 @@ struct TaskTagList: View {
                         .foregroundStyle(PomlistPalette.secondaryInk)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.white.opacity(0.65)))
+                        .pomlistGlassSurface(
+                            tint: Color.white.opacity(0.42),
+                            in: Capsule(),
+                            elevated: false
+                        )
                 }
             }
         }
