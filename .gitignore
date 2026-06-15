@@ -1,7 +1,0 @@
-AGENTS.md
-DerivedData/
-build/
-*.xcodeproj/
-*.xcworkspace/
-xcuserdata/
-.DS_Store
