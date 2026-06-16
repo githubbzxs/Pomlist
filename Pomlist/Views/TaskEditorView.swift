@@ -56,8 +56,6 @@ struct TaskEditorView: View {
                     }
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(PomlistTheme.background)
             .navigationTitle(task == nil ? "新增任务" : "编辑任务")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

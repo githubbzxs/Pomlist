@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 enum TaskStatus: String, CaseIterable, Codable, Identifiable {
@@ -103,18 +102,10 @@ struct FocusSession: Identifiable, Codable, Equatable {
 }
 
 struct PomlistData: Codable {
-    var passcodeHash: String
     var tasks: [PomTask]
     var sessions: [FocusSession]
     var categories: [String]
     var tags: [String]
-}
-
-enum PomlistHasher {
-    static func hash(_ input: String) -> String {
-        let digest = SHA256.hash(data: Data(input.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
-    }
 }
 
 func assert(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -130,14 +121,12 @@ snapshot.isCompletedInSession = true
 snapshot.completedAt = Date()
 let session = FocusSession(state: .ended, elapsedSeconds: 1500, tasks: [snapshot])
 let data = PomlistData(
-    passcodeHash: PomlistHasher.hash("0000"),
     tasks: [PomTask(id: task.id, title: "已编辑任务", category: "开发", tags: ["Swift"])],
     sessions: [session],
     categories: ["默认", "开发"],
     tags: ["Swift"]
 )
 
-assert(data.passcodeHash == PomlistHasher.hash("0000"), "口令 hash 应稳定")
 assert(data.sessions.first?.tasks.first?.titleSnapshot == "原始任务", "会话应保留任务快照")
 assert(data.sessions.first?.completionRate == 1, "完成率应来自快照状态")
 

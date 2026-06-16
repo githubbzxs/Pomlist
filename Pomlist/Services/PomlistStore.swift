@@ -7,7 +7,6 @@ final class PomlistStore: ObservableObject {
             persistence.save(data)
         }
     }
-    @Published var isUnlocked: Bool = false
     @Published var selectedTab: AppTab = .today
     @Published var lastError: String?
 
@@ -54,35 +53,6 @@ final class PomlistStore: ObservableObject {
 
     var tags: [String] {
         data.tags.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-    }
-
-    func unlock(passcode: String) -> Bool {
-        let ok = PomlistHasher.hash(passcode) == data.passcodeHash
-        if ok {
-            isUnlocked = true
-            lastError = nil
-        } else {
-            lastError = "口令不正确"
-        }
-        return ok
-    }
-
-    func lock() {
-        isUnlocked = false
-    }
-
-    func changePasscode(current: String, newPasscode: String) -> Bool {
-        guard PomlistHasher.hash(current) == data.passcodeHash else {
-            lastError = "当前口令不正确"
-            return false
-        }
-        guard newPasscode.count == 4, newPasscode.allSatisfy(\.isNumber) else {
-            lastError = "新口令需为 4 位数字"
-            return false
-        }
-        data.passcodeHash = PomlistHasher.hash(newPasscode)
-        lastError = nil
-        return true
     }
 
     func addTask(title: String, notes: String, category: String, tags: [String]) {
@@ -273,7 +243,6 @@ final class PomlistStore: ObservableObject {
 
     func resetDemoData() {
         data = .seed()
-        isUnlocked = false
     }
 
     private var activeSessionIndex: Int? {

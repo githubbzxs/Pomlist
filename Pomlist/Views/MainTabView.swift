@@ -35,6 +35,6 @@ struct MainTabView: View {
                 }
                 .tag(AppTab.settings)
         }
-        .tint(PomlistTheme.accent)
+        .tint(.accentColor)
     }
 }

@@ -1,6 +1,4 @@
 import Foundation
-import CryptoKit
-import SwiftUI
 
 enum TaskStatus: String, CaseIterable, Codable, Identifiable {
     case todo
@@ -169,13 +167,10 @@ struct FocusSession: Identifiable, Codable, Equatable {
 }
 
 struct PomlistData: Codable {
-    var passcodeHash: String
     var tasks: [PomTask]
     var sessions: [FocusSession]
     var categories: [String]
     var tags: [String]
-
-    static let defaultPasscode = "0000"
 
     static func seed() -> PomlistData {
         let now = Date()
@@ -205,7 +200,6 @@ struct PomlistData: Codable {
         ]
 
         return PomlistData(
-            passcodeHash: PomlistHasher.hash(PomlistData.defaultPasscode),
             tasks: tasks,
             sessions: PomlistData.sampleSessions(referenceDate: now),
             categories: ["默认", "计划", "开发", "学习", "复盘"],
@@ -283,11 +277,4 @@ struct DailyFocusPoint: Identifiable, Equatable {
     var date: Date
     var seconds: Int
     var completionRate: Double
-}
-
-enum PomlistHasher {
-    static func hash(_ input: String) -> String {
-        let digest = SHA256.hash(data: Data(input.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
-    }
 }
